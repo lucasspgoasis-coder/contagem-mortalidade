@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -83,12 +83,12 @@
             });
 
             useEffect(() => {
-                const localData = localStorage.getItem('oasis_mortalidade_v15');
+                const localData = localStorage.getItem('oasis_mortalidade_v16');
                 if (localData) setBlocosData(JSON.parse(localData));
             }, []);
 
             const saveToLocal = (data) => {
-                localStorage.setItem('oasis_mortalidade_v15', JSON.stringify(data));
+                localStorage.setItem('oasis_mortalidade_v16', JSON.stringify(data));
                 setBlocosData(data);
             };
 
@@ -184,7 +184,7 @@
                         try {
                             const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#F8FAFC' });
                             const link = document.createElement('a');
-                            link.download = `Oasis_Relatorio_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.jpg`;
+                            link.download = `Oasis_Relatorio_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.jpg`;
                             link.href = canvas.toDataURL('image/jpeg', 0.9);
                             link.click();
                         } catch (err) {
@@ -204,7 +204,7 @@
                                 <SvgIcon name="calendar" className="w-5 h-5"/>
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Data Registro</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Data da Contagem</p>
                                 <p className="text-sm font-black text-slate-800">{reg.dataContagem.split('-').reverse().join('/')}</p>
                             </div>
                         </div>
@@ -317,7 +317,7 @@
                                             </select>
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data Transplante</label>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data da Contagem</label>
                                             <input type="date" value={formData.dataContagem} onChange={e => setFormData({...formData, dataContagem: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold outline-none" />
                                         </div>
                                     </div>
@@ -445,7 +445,7 @@
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-black text-slate-400 uppercase">Exportado em</p>
-                                    <p className="text-lg font-black text-slate-800">{new Date().toLocaleDateString('pt-BR')}</p>
+                                    <p className="text-lg font-black text-slate-800">{new Date().toLocaleDateString('pt-PT')}</p>
                                 </div>
                             </div>
                             <div className="space-y-12">
