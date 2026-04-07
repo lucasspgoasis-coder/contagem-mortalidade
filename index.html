@@ -12,21 +12,17 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         
-        :root {
-            --header-height: 220px; /* Altura aproximada do cabeçalho */
-        }
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            letter-spacing: -0.01em;
-            background-color: #F8FAFC;
+        body, html { 
+            height: 100%;
             margin: 0;
             padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif; 
+            background-color: #F8FAFC;
         }
 
-        /* Ajuste para o cabeçalho não tampar o conteúdo */
-        .main-content {
-            margin-top: var(--header-height);
+        #root {
+            height: 100%;
         }
 
         .stats-flash-card {
@@ -34,12 +30,16 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        #export-container {
-            position: absolute;
-            left: -9999px;
-            top: 0;
-            background: white;
-            width: 850px;
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #062C1B;
+            border-radius: 10px;
         }
 
         @keyframes pulse-red {
@@ -53,19 +53,12 @@
             border-width: 2px;
         }
 
-        /* Estilização da barra de rolagem */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #062C1B;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #0a4d2f;
+        #export-container {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            background: white;
+            width: 850px;
         }
     </style>
 </head>
@@ -76,19 +69,8 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         const NEW_LOGO_URL = "https://i.imgur.com/wEozr34.png";
-
         const LISTA_BLOCOS_PADRAO = Array.from({ length: 10 }, (_, i) => `BLOCO ${String(i + 1).padStart(2, '0')}`);
-        const LISTA_VARIEDADES = ["Syngenta BRO", "Master Tsv", "Pharlap", "Jiraya F1", "OUTRA..."];
-        const LISTA_MOTIVOS = [
-            "CALOR EXCESSIVO",
-            "FALHA DE IRRIGAÇÃO",
-            "PRAGAS / INSETOS",
-            "FUNGOS / DOENÇAS",
-            "ERRO DE MANEIO",
-            "QUALIDADE DA MUDA",
-            "OUTRO..."
-        ];
-
+        
         const SvgIcon = ({ name, className = "w-4 h-4" }) => {
             const icons = {
                 trash: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
@@ -96,8 +78,8 @@
                 download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
                 skull: <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12h.01M15 12h.01M12 3a8 8 0 0 0-8 8v1a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-1a8 8 0 0 0-8-8z"/><path d="M16 21v-2a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></g>,
                 leaf: <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a7 7 0 0 1-10 10Z" />,
-                calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
-                clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>
+                clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+                trendingUp: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
             };
             return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name]}</svg>;
         };
@@ -116,13 +98,10 @@
                 cultura: '',
                 variedade: 'Syngenta BRO',
                 variedadeCustom: '',
-                motivo: 'CALOR EXCESSIVO',
-                motivoCustom: '',
                 ciclo: '',
-                linhasA: '',
-                linhasB: '',
                 totalBandejas: '',
-                transplantadoManual: '',
+                transplanteLadoA: '',
+                transplanteLadoB: '',
                 dataTransplantio: '',
                 perdaLadoA: '',
                 perdaLadoB: '',
@@ -144,9 +123,10 @@
             };
 
             const calc = useMemo(() => {
-                const bandejas = parseInt(formData.totalBandejas) || 0;
-                const mudasPorBandeja = bandejas * 200;
-                const totalTrans = parseInt(formData.transplantadoManual) || 0;
+                const transA = parseInt(formData.transplanteLadoA) || 0;
+                const transB = parseInt(formData.transplanteLadoB) || 0;
+                const totalTrans = transA + transB;
+
                 const perdaA = parseInt(formData.perdaLadoA) || 0;
                 const perdaB = parseInt(formData.perdaLadoB) || 0;
                 const totalPerda = perdaA + perdaB;
@@ -168,19 +148,24 @@
                     dataRevisao = date.toISOString().split('T')[0];
                 }
 
-                return { mudasPorBandeja, totalTrans, totalPerda, totalPos, dataRevisao, diasDeTransplantio };
+                return { totalTrans, totalPerda, totalPos, dataRevisao, diasDeTransplantio, transA, transB };
             }, [formData]);
 
             const stats = useMemo(() => {
                 let totalPerdas = 0;
-                let totalBandejas = 0;
+                let totalTransplantadoGeral = 0;
+                let maxDiasTransplantio = 0;
+                
                 blocosPerda.forEach(b => {
                     b.perdas.forEach(p => {
                         totalPerdas += (p.qtd || 0);
-                        totalBandejas += (p.bandejas || 0);
+                        totalTransplantadoGeral += (p.totalTrans || 0);
+                        if (p.diasTransplantio > maxDiasTransplantio) {
+                            maxDiasTransplantio = p.diasTransplantio;
+                        }
                     });
                 });
-                return { totalPerdas, totalBandejas, totalBlocosAfetados: blocosPerda.length };
+                return { totalPerdas, totalTransplantadoGeral, maxDiasTransplantio };
             }, [blocosPerda]);
 
             const handleSave = (e) => {
@@ -188,17 +173,15 @@
                 const now = new Date();
                 const blocoFinal = formData.nomeBloco === "OUTRO" ? formData.nomeBlocoCustom.trim().toUpperCase() : formData.nomeBloco;
                 const variedadeFinal = formData.variedade === "OUTRA..." ? formData.variedadeCustom.trim().toUpperCase() : formData.variedade;
-                const motivoFinal = formData.motivo === "OUTRO..." ? formData.motivoCustom.trim().toUpperCase() : formData.motivo;
 
                 const novoRegistro = {
                     id: editingRef ? editingRef.perdaId : Date.now().toString(),
                     cultura: formData.cultura.toUpperCase(),
                     variedade: variedadeFinal.toUpperCase(),
-                    motivo: motivoFinal,
                     ciclo: formData.ciclo,
-                    linhasA: parseInt(formData.linhasA) || 0,
-                    linhasB: parseInt(formData.linhasB) || 0,
                     bandejas: parseInt(formData.totalBandejas) || 0,
+                    transA: calc.transA,
+                    transB: calc.transB,
                     totalTrans: calc.totalTrans,
                     dataTransplantio: formData.dataTransplantio,
                     diasTransplantio: calc.diasDeTransplantio,
@@ -246,7 +229,7 @@
                 await new Promise(r => setTimeout(r, 600));
                 const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
                 const link = document.createElement('a');
-                link.download = `Relatorio_Mortalidade_Oasis.jpg`;
+                link.download = `Mortalidade_Oasis.jpg`;
                 link.href = canvas.toDataURL('image/jpeg', 0.9);
                 link.click();
                 setShowExportTemplate(false);
@@ -255,320 +238,337 @@
             if (loading) return null;
 
             return (
-                <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
-                    {/* Header Corrigido com Posição Fixa */}
-                    <header className="fixed top-0 left-0 right-0 bg-[#062C1B] text-white px-6 py-6 shadow-2xl z-[100] h-[var(--header-height)] flex items-center">
-                        <div className="max-w-[1550px] mx-auto w-full flex flex-col items-center">
-                            <div className="flex items-center gap-6 mb-6 w-full justify-center">
-                                <div className="flex items-center gap-4">
-                                    <img src={NEW_LOGO_URL} alt="Fazenda Oásis" className="h-14 md:h-16 logo-clean" crossOrigin="anonymous" />
-                                    <div className="flex flex-col">
-                                        <h1 className="text-2xl md:text-4xl font-[900] uppercase tracking-tighter leading-none">Fazenda Oásis</h1>
-                                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] opacity-90 mt-1">Gestão de Mortalidade de Mudas</p>
-                                    </div>
+                <div className="flex flex-col h-full overflow-hidden bg-[#F8FAFC]">
+                    {/* Header */}
+                    <header className="bg-[#062C1B] text-white px-6 py-4 shadow-xl shrink-0 z-50">
+                        <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-4">
+                                <img src={NEW_LOGO_URL} alt="Fazenda Oásis" className="h-10 md:h-12" crossOrigin="anonymous" />
+                                <div className="flex flex-col">
+                                    <h1 className="text-xl md:text-2xl font-[900] uppercase tracking-tighter leading-none">Fazenda Oásis</h1>
+                                    <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mt-1">Gestão de Mortalidade</p>
                                 </div>
                             </div>
                             
-                            <div className="flex flex-col md:flex-row items-center gap-6 w-full justify-center">
-                                <div className="stats-flash-card px-6 py-2 rounded-[2rem] flex items-center gap-6 shadow-inner overflow-x-auto max-w-full">
-                                    <div className="text-center shrink-0">
-                                        <p className="text-[8px] font-black text-red-400 uppercase tracking-[0.2em] mb-0.5">Mortalidade Total</p>
-                                        <p className="text-xl md:text-2xl font-black text-white leading-none">{stats.totalPerdas.toLocaleString('pt-BR')}</p>
+                            <div className="flex items-center gap-6">
+                                <div className="stats-flash-card px-5 py-2.5 rounded-2xl flex items-center gap-6 shadow-inner">
+                                    <div className="text-center">
+                                        <p className="text-[7px] font-black text-emerald-400 uppercase mb-0.5">Transplantado Geral</p>
+                                        <p className="text-lg font-black text-white leading-none">{stats.totalTransplantadoGeral.toLocaleString('pt-BR')}</p>
                                     </div>
-                                    <div className="w-px h-8 bg-white/20 shrink-0"></div>
-                                    <div className="text-center shrink-0">
-                                        <p className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-0.5">Total Bandejas</p>
-                                        <p className="text-xl md:text-2xl font-black text-white leading-none">{stats.totalBandejas.toLocaleString('pt-BR')}</p>
+                                    <div className="w-px h-6 bg-white/20"></div>
+                                    <div className="text-center">
+                                        <p className="text-[7px] font-black text-blue-400 uppercase mb-0.5">Total Dias Campo</p>
+                                        <p className="text-lg font-black text-white leading-none">{stats.maxDiasTransplantio}d</p>
                                     </div>
-                                    <div className="w-px h-8 bg-white/20 shrink-0"></div>
-                                    <div className="text-center shrink-0">
-                                        <p className="text-[8px] font-black text-red-400 uppercase tracking-[0.2em] mb-0.5">Blocos Ocorrência</p>
-                                        <p className="text-xl md:text-2xl font-black text-white leading-none">{stats.totalBlocosAfetados}</p>
+                                    <div className="w-px h-6 bg-white/20"></div>
+                                    <div className="text-center">
+                                        <p className="text-[7px] font-black text-red-400 uppercase mb-0.5">Óbitos Totais</p>
+                                        <p className="text-lg font-black text-white leading-none">{stats.totalPerdas.toLocaleString('pt-BR')}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex gap-2">
-                                    <button onClick={downloadJpeg} className="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-xl active:scale-95 group">
-                                        <SvgIcon name="download" className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                                        <span className="text-[10px] font-black uppercase tracking-wider">Exportar</span>
+                                    <button onClick={downloadJpeg} className="bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2">
+                                        <SvgIcon name="download" className="w-4 h-4" />
+                                        <span className="text-[10px] font-black uppercase hidden md:inline">Relatório</span>
                                     </button>
-                                    <button onClick={() => setShowDeleteModal(true)} className="bg-white/10 hover:bg-red-600 text-white p-3 rounded-2xl border border-white/10 transition-colors">
-                                        <SvgIcon name="trash" className="w-5 h-5" />
+                                    <button onClick={() => setShowDeleteModal(true)} className="bg-white/10 hover:bg-red-600 text-white p-2.5 rounded-xl border border-white/10 transition-colors">
+                                        <SvgIcon name="trash" className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </header>
 
-                    {/* Conteúdo Principal com Margem de Topo para compensar o Header */}
-                    <main className="main-content max-w-[1400px] mx-auto w-full grid lg:grid-cols-[450px_1fr] gap-10 p-6 md:p-10">
-                        <aside>
-                            <div className={`bg-white p-8 rounded-[3rem] shadow-xl border border-slate-200 lg:sticky lg:top-[var(--header-height)] transition-all mt-4 mb-10 ${editingRef ? 'editing-mode ring-4 ring-red-500/10' : ''}`}>
-                                <h2 className="text-[12px] font-black uppercase text-red-900 mb-6 flex items-center gap-3">
-                                    <SvgIcon name="skull" className="w-5 h-5 text-red-600" />
-                                    {editingRef ? "Editar Registro" : "Novo Registro"}
+                    {/* Dashboard */}
+                    <div className="flex flex-1 overflow-hidden p-4 md:p-6 gap-6 max-w-[1600px] mx-auto w-full">
+                        {/* Formulário */}
+                        <aside className="w-full md:w-[400px] flex flex-col shrink-0 overflow-hidden">
+                            <div className={`bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 flex flex-col h-full ${editingRef ? 'editing-mode' : ''}`}>
+                                <h2 className="text-[10px] font-black uppercase text-slate-800 mb-4 flex items-center gap-2">
+                                    <SvgIcon name={editingRef ? "edit" : "skull"} className={`w-4 h-4 ${editingRef ? 'text-orange-500' : 'text-red-600'}`} />
+                                    {editingRef ? "Editando Registro" : "Registrar Novo Lote"}
                                 </h2>
 
-                                <form onSubmit={handleSave} className="space-y-5">
-                                    <div className="grid grid-cols-2 gap-3">
+                                <form onSubmit={handleSave} className="space-y-4 custom-scroll overflow-y-auto pr-2 flex-1 pb-4">
+                                    {/* Bloco e Cultura */}
+                                    <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 space-y-3">
                                         <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 block">Contagem</label>
-                                            <input type="date" required value={formData.dataContagem} onChange={e => setFormData({...formData, dataContagem: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:bg-white" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-orange-500 uppercase ml-2 mb-1 block">Revisão (15d)</label>
-                                            <div className="w-full p-3 bg-orange-50 border border-orange-100 rounded-xl font-black text-xs text-orange-700 text-center">
-                                                {calc.dataRevisao ? calc.dataRevisao.split('-').reverse().join('/') : "--/--/--"}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="col-span-2">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 block">Bloco</label>
-                                            <select required value={formData.nomeBloco} onChange={e => setFormData({...formData, nomeBloco: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-xs outline-none focus:ring-2 focus:ring-red-500/10">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-0.5 block">Bloco de Plantio</label>
+                                            <select required value={formData.nomeBloco} onChange={e => setFormData({...formData, nomeBloco: e.target.value})} className="w-full p-2 bg-white border border-slate-200 rounded-lg font-black text-[10px] outline-none">
                                                 {LISTA_BLOCOS_PADRAO.map(b => <option key={b} value={b}>{b}</option>)}
                                                 <option value="OUTRO">OUTRO BLOCO...</option>
                                             </select>
                                         </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 block">Cultura</label>
-                                            <input type="text" required placeholder="Ex: Alface" value={formData.cultura} onChange={e => setFormData({...formData, cultura: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs uppercase outline-none focus:bg-white" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 block">Ciclo (Dias)</label>
-                                            <input type="number" required placeholder="Ex: 45" value={formData.ciclo} onChange={e => setFormData({...formData, ciclo: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:bg-white" />
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-50 p-5 rounded-[2rem] border border-slate-200">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase block text-center mb-3 tracking-wider">Variedade</label>
-                                        <select required value={formData.variedade} onChange={e => setFormData({...formData, variedad: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl font-black text-xs outline-none mb-3">
-                                            {LISTA_VARIEDADES.map(v => <option key={v} value={v}>{v}</option>)}
-                                        </select>
-                                        
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <label className="text-[8px] font-black text-slate-400 uppercase block text-center mb-1">Transplantado</label>
-                                                <input type="number" required value={formData.transplantadoManual} onChange={e => setFormData({...formData, transplantadoManual: e.target.value})} className="w-full p-2 bg-white border border-slate-200 rounded-xl text-center font-black text-sm outline-none" />
+                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-0.5 block">Cultura</label>
+                                                <input type="text" required placeholder="Ex: Alface" value={formData.cultura} onChange={e => setFormData({...formData, cultura: e.target.value})} className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-[10px] uppercase outline-none" />
                                             </div>
                                             <div>
-                                                <label className="text-[8px] font-black text-slate-400 uppercase block text-center mb-1">Data Plantio</label>
-                                                <input type="date" required value={formData.dataTransplantio} onChange={e => setFormData({...formData, dataTransplantio: e.target.value})} className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-[10px] outline-none" />
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-3 bg-blue-50 p-2 rounded-xl border border-blue-100 flex justify-between items-center px-3">
-                                            <span className="text-[8px] font-black text-blue-700 uppercase">Tempo de Campo:</span>
-                                            <span className="text-sm font-black text-blue-600">{calc.diasDeTransplantio} Dias</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100">
-                                        <p className="text-[9px] font-black text-emerald-700 uppercase text-center mb-3">Bandejas (200 p/un)</p>
-                                        <div className="grid grid-cols-2 gap-3 items-center">
-                                            <div>
-                                                <input type="number" required value={formData.totalBandejas} onChange={e => setFormData({...formData, totalBandejas: e.target.value})} className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-center font-black text-lg outline-none" />
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-[8px] font-black text-emerald-400 uppercase mb-0.5">Mudas Totais</p>
-                                                <p className="text-xl font-black text-emerald-800 tracking-tighter">{calc.mudasPorBandeja.toLocaleString('pt-BR')}</p>
+                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-0.5 block">Ciclo (Dias)</label>
+                                                <input type="number" required placeholder="45" value={formData.ciclo} onChange={e => setFormData({...formData, ciclo: e.target.value})} className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-[10px] outline-none" />
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-red-50 p-5 rounded-[2rem] border border-red-100">
-                                        <p className="text-[9px] font-black text-red-600 uppercase text-center mb-3 italic">Identificação de Óbitos</p>
-                                        <div className="grid grid-cols-2 gap-3">
+                                    {/* Transplante Detalhado */}
+                                    <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100">
+                                        <div className="flex items-center justify-center gap-2 mb-2">
+                                            <SvgIcon name="trendingUp" className="w-3 h-3 text-emerald-600" />
+                                            <label className="text-[8px] font-black text-emerald-800 uppercase tracking-widest">Transplante Detalhado</label>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 mb-3">
                                             <div>
-                                                <label className="text-[8px] font-black text-red-400 uppercase block text-center mb-1">Lado A</label>
-                                                <input type="number" required value={formData.perdaLadoA} onChange={e => setFormData({...formData, perdaLadoA: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-xl text-center font-black text-lg outline-none" />
+                                                <label className="text-[7px] font-black text-emerald-600 uppercase block text-center">Lado A</label>
+                                                <input type="number" required value={formData.transplanteLadoA} onChange={e => setFormData({...formData, transplanteLadoA: e.target.value})} className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-center font-black text-xs outline-none" />
                                             </div>
                                             <div>
-                                                <label className="text-[8px] font-black text-red-400 uppercase block text-center mb-1">Lado B</label>
-                                                <input type="number" required value={formData.perdaLadoB} onChange={e => setFormData({...formData, perdaLadoB: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-xl text-center font-black text-lg outline-none" />
+                                                <label className="text-[7px] font-black text-emerald-600 uppercase block text-center">Lado B</label>
+                                                <input type="number" required value={formData.transplanteLadoB} onChange={e => setFormData({...formData, transplanteLadoB: e.target.value})} className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-center font-black text-xs outline-none" />
                                             </div>
                                         </div>
-                                        <div className="mt-3 pt-2 border-t border-red-100 flex justify-between items-center px-2">
-                                            <span className="text-[9px] font-black text-red-900 uppercase">Saldo Final:</span>
-                                            <span className="text-xl font-black text-red-600">{calc.totalPos.toLocaleString('pt-BR')}</span>
+                                        <div className="flex justify-between items-center px-1 border-t border-emerald-100 pt-2 mb-3">
+                                            <span className="text-[8px] font-black text-emerald-900 uppercase">Total Transplantado:</span>
+                                            <span className="text-sm font-black text-emerald-700">{calc.totalTrans.toLocaleString('pt-BR')}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-[7px] font-black text-emerald-600 uppercase block text-center">Data Plantio</label>
+                                                <input type="date" required value={formData.dataTransplantio} onChange={e => setFormData({...formData, dataTransplantio: e.target.value})} className="w-full p-2 bg-white border border-emerald-200 rounded-lg font-bold text-[9px] outline-none" />
+                                            </div>
+                                            <div className="flex flex-col justify-center text-center">
+                                                <label className="text-[7px] font-black text-emerald-600 uppercase block">Dias Campo</label>
+                                                <div className="text-xs font-black text-emerald-800 mt-1">{calc.diasDeTransplantio}d</div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <button type="submit" className={`w-full py-4 rounded-[2rem] text-white font-black uppercase text-[12px] shadow-xl transition-all active:scale-95 ${editingRef ? 'bg-orange-600' : 'bg-[#062C1B] hover:bg-black'}`}>
-                                        {editingRef ? "Salvar Alteração" : "Lançar Registro"}
+                                    {/* Perdas */}
+                                    <div className="bg-red-50 p-4 rounded-3xl border border-red-100">
+                                        <p className="text-[7px] font-black text-red-600 uppercase text-center mb-2 tracking-widest">Contagem de Óbitos</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-[7px] font-black text-red-400 uppercase block text-center">Óbitos Lado A</label>
+                                                <input type="number" required value={formData.perdaLadoA} onChange={e => setFormData({...formData, perdaLadoA: e.target.value})} className="w-full p-2 bg-white border border-red-200 rounded-lg text-center font-black text-xs outline-none" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[7px] font-black text-red-400 uppercase block text-center">Óbitos Lado B</label>
+                                                <input type="number" required value={formData.perdaLadoB} onChange={e => setFormData({...formData, perdaLadoB: e.target.value})} className="w-full p-2 bg-white border border-red-200 rounded-lg text-center font-black text-xs outline-none" />
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-red-100 flex justify-between items-center px-1">
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-red-900 uppercase leading-none">Total Perdas:</span>
+                                                <span className="text-[10px] font-black text-red-600 mt-0.5">{calc.totalPerda.toLocaleString('pt-BR')}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[8px] font-black text-emerald-900 uppercase leading-none block">Pós-Transplante:</span>
+                                                <span className="text-lg font-black text-emerald-600 leading-none">{calc.totalPos.toLocaleString('pt-BR')}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Bandejas e Datas */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                            <label className="text-[7px] font-black text-slate-400 uppercase block text-center">Data Contagem</label>
+                                            <input type="date" required value={formData.dataContagem} onChange={e => setFormData({...formData, dataContagem: e.target.value})} className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-[9px] outline-none" />
+                                        </div>
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                            <label className="text-[7px] font-black text-slate-400 uppercase block text-center">Bandejas</label>
+                                            <input type="number" required value={formData.totalBandejas} onChange={e => setFormData({...formData, totalBandejas: e.target.value})} className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-center font-black text-xs outline-none" />
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" className={`w-full py-4 rounded-2xl text-white font-black uppercase text-[10px] shadow-xl transition-all active:scale-95 ${editingRef ? 'bg-orange-600 hover:bg-orange-700' : 'bg-[#062C1B] hover:bg-black'}`}>
+                                        {editingRef ? "Atualizar Registro" : "Salvar Lançamento"}
                                     </button>
                                 </form>
                             </div>
                         </aside>
 
-                        <section className="space-y-8 pt-4">
-                            {blocosPerda.length === 0 ? (
-                                <div className="bg-white rounded-[3.5rem] p-32 text-center border-2 border-dashed border-slate-200 flex flex-col items-center">
-                                    <SvgIcon name="leaf" className="w-16 h-16 text-emerald-100 mb-6" />
-                                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Base de Dados Vazia</p>
-                                </div>
-                            ) : (
-                                [...blocosPerda].reverse().map(bloco => (
-                                    <div key={bloco.id} className="bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden group hover:shadow-2xl transition-all">
-                                        <div className="bg-[#062C1B] px-10 py-6 flex justify-between items-center text-white">
-                                            <div>
-                                                <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">{bloco.nome}</h3>
-                                                <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mt-1.5 opacity-80 text-center">Oásis Campo</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-3xl font-black text-white leading-none">
-                                                    {bloco.perdas.reduce((a,p) => a+p.qtd, 0).toLocaleString('pt-BR')}
-                                                </p>
-                                                <p className="text-[8px] font-black text-red-400 uppercase mt-0.5">Óbitos Totais</p>
-                                            </div>
-                                        </div>
-                                        <div className="p-6 grid gap-4">
-                                            {bloco.perdas.map(p => (
-                                                <div key={p.id} className="p-6 bg-slate-50 border border-slate-200/50 rounded-[2.5rem] group/item hover:bg-white transition-all relative">
-                                                    <div className="flex flex-wrap items-center gap-3 mb-4">
-                                                        <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-xl uppercase tracking-wider">{p.cultura}</span>
-                                                        <span className="text-[9px] font-black bg-slate-200 text-slate-700 px-4 py-1.5 rounded-xl uppercase tracking-tighter">{p.variedade}</span>
-                                                        
-                                                        <div className="flex gap-2 ml-auto">
-                                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
-                                                                <SvgIcon name="clock" className="w-3 h-3 text-blue-400" />
-                                                                <span className="text-[9px] font-black text-blue-600 uppercase">HÁ {p.diasTransplantio} DIAS</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl border border-slate-100">
-                                                                <SvgIcon name="calendar" className="w-3 h-3 text-slate-400" />
-                                                                <span className="text-[9px] font-bold text-slate-600 italic">Plantio: {p.dataTransplantio.split('-').reverse().join('/')}</span>
-                                                            </div>
-                                                        </div>
+                        {/* Lista de Registros */}
+                        <section className="flex-1 flex flex-col overflow-hidden">
+                            <div className="flex-1 custom-scroll overflow-y-auto space-y-4 pr-2 pb-6">
+                                {blocosPerda.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-100 rounded-[3rem]">
+                                        <SvgIcon name="leaf" className="w-12 h-12 mb-4" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest">Aguardando Lançamentos...</p>
+                                    </div>
+                                ) : (
+                                    [...blocosPerda].reverse().map(bloco => (
+                                        <div key={bloco.id} className="bg-white rounded-[2.5rem] shadow-lg border border-slate-100 overflow-hidden group transition-all hover:shadow-2xl">
+                                            <div className="bg-[#062C1B] px-6 py-4 flex justify-between items-center text-white">
+                                                <div>
+                                                    <h3 className="text-lg font-black uppercase leading-none tracking-tight">{bloco.nome}</h3>
+                                                    <p className="text-[7px] font-black text-emerald-400 uppercase mt-1 tracking-[0.2em]">Resumo de Campo</p>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="text-center">
+                                                        <p className="text-[7px] font-black text-emerald-400 uppercase">Transplantado</p>
+                                                        <p className="text-lg font-black text-white leading-none">
+                                                            {bloco.perdas.reduce((a,p) => a+p.totalTrans, 0).toLocaleString('pt-BR')}
+                                                        </p>
                                                     </div>
-                                                    
-                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                        <div className="text-center p-2">
-                                                            <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Bandejas</p>
-                                                            <p className="text-lg font-black text-emerald-700 leading-none">{p.bandejas}</p>
-                                                            <p className="text-[8px] text-slate-400 mt-0.5">{p.bandejas * 200} mudas</p>
-                                                        </div>
-                                                        <div className="text-center p-2">
-                                                            <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Plantado</p>
-                                                            <p className="text-lg font-black text-slate-800 leading-none">{p.totalTrans.toLocaleString('pt-BR')}</p>
-                                                        </div>
-                                                        <div className="text-center p-2">
-                                                            <p className="text-[8px] font-black text-red-400 uppercase mb-0.5">Perda</p>
-                                                            <p className="text-lg font-black text-red-600 leading-none">-{p.qtd.toLocaleString('pt-BR')}</p>
-                                                        </div>
-                                                        <div className="text-center bg-white rounded-2xl border border-slate-100 p-2 shadow-sm">
-                                                            <p className="text-[8px] font-black text-emerald-500 uppercase mb-0.5">Estoque</p>
-                                                            <p className="text-lg font-black text-emerald-600 leading-none">{p.totalPos.toLocaleString('pt-BR')}</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="absolute top-6 right-6 flex gap-1 opacity-0 group-hover/item:opacity-100 transition-all">
-                                                        <button onClick={() => {
-                                                            setEditingRef({ blocoId: bloco.id, blocoNome: bloco.nome, perdaId: p.id, horaOriginal: p.hora });
-                                                            setFormData({
-                                                                nomeBloco: LISTA_BLOCOS_PADRAO.includes(bloco.nome) ? bloco.nome : "OUTRO",
-                                                                nomeBlocoCustom: LISTA_BLOCOS_PADRAO.includes(bloco.nome) ? '' : bloco.nome,
-                                                                cultura: p.cultura,
-                                                                variedade: p.variedade,
-                                                                variedadeCustom: '',
-                                                                ciclo: p.ciclo,
-                                                                linhasA: p.linhasA,
-                                                                linhasB: p.linhasB,
-                                                                totalBandejas: p.bandejas,
-                                                                transplantadoManual: p.totalTrans,
-                                                                dataTransplantio: p.dataTransplantio,
-                                                                perdaLadoA: p.ladoA,
-                                                                perdaLadoB: p.ladoB,
-                                                                dataContagem: p.data,
-                                                                motivo: p.motivo,
-                                                                motivoCustom: '',
-                                                                observacao: p.obs
-                                                            });
-                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                        }} className="p-2 bg-white text-orange-500 rounded-lg border border-orange-100 hover:bg-orange-50 shadow-sm transition-colors"><SvgIcon name="edit" /></button>
-                                                        <button onClick={() => {
-                                                            const upd = blocosPerda.map(b => b.id === bloco.id ? { ...b, perdas: b.perdas.filter(reg => reg.id !== p.id) } : b).filter(b => b.perdas.length > 0);
-                                                            saveToLocal(upd);
-                                                        }} className="p-2 bg-white text-red-500 rounded-lg border border-red-100 hover:bg-red-50 shadow-sm transition-colors"><SvgIcon name="trash" /></button>
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-black text-red-500 leading-none">
+                                                            -{bloco.perdas.reduce((a,p) => a+p.qtd, 0).toLocaleString('pt-BR')}
+                                                        </p>
+                                                        <p className="text-[7px] font-black text-red-400 uppercase">Perdas Bloco</p>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </section>
-                    </main>
+                                            </div>
+                                            <div className="p-4 space-y-4">
+                                                {bloco.perdas.map(p => (
+                                                    <div key={p.id} className="p-5 bg-slate-50 border border-slate-100 rounded-[2rem] group/item hover:bg-white transition-all relative">
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg uppercase">{p.cultura}</span>
+                                                            <span className="text-[8px] font-black bg-slate-200 text-slate-700 px-3 py-1 rounded-lg uppercase">{p.variedade}</span>
+                                                            <div className="flex items-center gap-1.5 ml-auto px-2 py-1 bg-blue-50 rounded-lg border border-blue-100">
+                                                                <SvgIcon name="clock" className="w-3 h-3 text-blue-400" />
+                                                                <span className="text-[8px] font-black text-blue-600 uppercase">Há {p.diasTransplantio} Dias no Campo</span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            {/* Transplante */}
+                                                            <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                                                                <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Transplante (A/B)</p>
+                                                                <div className="flex justify-between items-end">
+                                                                    <p className="text-[10px] font-bold text-slate-600">{p.transA} / {p.transB}</p>
+                                                                    <p className="text-sm font-black text-emerald-700">Σ {p.totalTrans.toLocaleString('pt-BR')}</p>
+                                                                </div>
+                                                            </div>
 
-                    {/* Modais e Templates de Exportação permanecem iguais */}
+                                                            {/* Perdas */}
+                                                            <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                                                                <p className="text-[7px] font-black text-red-400 uppercase mb-1">Óbitos (A/B)</p>
+                                                                <div className="flex justify-between items-end">
+                                                                    <p className="text-[10px] font-bold text-red-400">{p.ladoA} / {p.ladoB}</p>
+                                                                    <p className="text-sm font-black text-red-600">-{p.qtd.toLocaleString('pt-BR')}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Bandejas */}
+                                                            <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center text-center">
+                                                                <p className="text-[7px] font-black text-slate-400 uppercase mb-0.5">Bandejas</p>
+                                                                <p className="text-sm font-black text-slate-800">{p.bandejas}</p>
+                                                            </div>
+
+                                                            {/* Pós Transplante */}
+                                                            <div className="bg-[#062C1B] p-3 rounded-2xl shadow-lg flex flex-col justify-center text-center text-white">
+                                                                <p className="text-[7px] font-black text-emerald-400 uppercase mb-0.5">Saldo Pós-Transp.</p>
+                                                                <p className="text-base font-black leading-none">{p.totalPos.toLocaleString('pt-BR')}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Ações */}
+                                                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover/item:opacity-100 transition-all scale-90">
+                                                            <button onClick={() => {
+                                                                setEditingRef({ blocoId: bloco.id, blocoNome: bloco.nome, perdaId: p.id, horaOriginal: p.hora });
+                                                                setFormData({
+                                                                    nomeBloco: LISTA_BLOCOS_PADRAO.includes(bloco.nome) ? bloco.nome : "OUTRO",
+                                                                    nomeBlocoCustom: LISTA_BLOCOS_PADRAO.includes(bloco.nome) ? '' : bloco.nome,
+                                                                    cultura: p.cultura,
+                                                                    variedade: p.variedade,
+                                                                    variedadeCustom: '',
+                                                                    ciclo: p.ciclo,
+                                                                    totalBandejas: p.bandejas,
+                                                                    transplanteLadoA: p.transA,
+                                                                    transplanteLadoB: p.transB,
+                                                                    dataTransplantio: p.dataTransplantio,
+                                                                    perdaLadoA: p.ladoA,
+                                                                    perdaLadoB: p.ladoB,
+                                                                    dataContagem: p.data,
+                                                                    observacao: p.obs
+                                                                });
+                                                            }} className="p-1.5 bg-white text-orange-500 rounded-lg border border-orange-100 hover:bg-orange-50 shadow-sm"><SvgIcon name="edit" /></button>
+                                                            <button onClick={() => {
+                                                                const upd = blocosPerda.map(b => b.id === bloco.id ? { ...b, perdas: b.perdas.filter(reg => reg.id !== p.id) } : b).filter(b => b.perdas.length > 0);
+                                                                saveToLocal(upd);
+                                                            }} className="p-1.5 bg-white text-red-500 rounded-lg border border-red-100 hover:bg-red-50 shadow-sm"><SvgIcon name="trash" /></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+                    </div>
+
+                    {/* Modal Deletar */}
                     {showDeleteModal && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur p-6">
-                            <div className="bg-white rounded-[3rem] p-12 max-w-sm w-full text-center shadow-2xl">
-                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600">
-                                    <SvgIcon name="trash" className="w-8 h-8" />
+                            <div className="bg-white rounded-[2.5rem] p-8 max-w-xs w-full text-center shadow-2xl">
+                                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                                    <SvgIcon name="trash" className="w-6 h-6" />
                                 </div>
-                                <h3 className="text-xl font-black uppercase text-slate-900 mb-2">Limpar Registros?</h3>
-                                <p className="text-sm text-slate-500 mb-8 font-medium">Todos os lançamentos atuais serão permanentemente removidos.</p>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 rounded-2xl bg-slate-100 font-bold uppercase text-[10px] text-slate-600 hover:bg-slate-200 transition-colors">Cancelar</button>
-                                    <button onClick={() => {saveToLocal([]); setShowDeleteModal(false);}} className="flex-1 py-4 rounded-2xl bg-red-600 text-white font-bold uppercase text-[10px] hover:bg-red-700 shadow-lg shadow-red-200 transition-colors">Excluir Tudo</button>
+                                <h3 className="text-lg font-black uppercase text-slate-900 mb-1">Resetar Sistema?</h3>
+                                <p className="text-[10px] text-slate-500 mb-6 font-medium">Isso apagará permanentemente todos os registros de mortalidade de todos os blocos.</p>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 font-bold uppercase text-[9px] text-slate-600">Não</button>
+                                    <button onClick={() => {saveToLocal([]); setShowDeleteModal(false);}} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold uppercase text-[9px]">Sim, Limpar</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    {/* Template Exportação */}
                     {showExportTemplate && (
-                        <div id="export-container" ref={reportRef} className="p-16">
-                            <div className="flex justify-between items-center border-b-8 border-[#062C1B] pb-8 mb-12">
-                                <div className="flex items-center gap-6">
-                                    <img src={NEW_LOGO_URL} className="h-20" crossOrigin="anonymous" />
-                                    <div>
-                                        <h1 className="text-4xl font-black uppercase tracking-tighter">Relatório Oásis</h1>
-                                        <p className="text-emerald-600 font-bold uppercase tracking-widest text-[10px]">Monitoramento de Mortalidade • Qualidade Superior</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-10">
-                                    <div className="text-center">
-                                        <p className="text-4xl font-black text-red-600">{stats.totalPerdas}</p>
-                                        <p className="text-[9px] font-black uppercase text-slate-400">Total Óbitos</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-4xl font-black text-emerald-600">{stats.totalBandejas}</p>
-                                        <p className="text-[9px] font-black uppercase text-slate-400">Total Band.</p>
-                                    </div>
+                        <div id="export-container" ref={reportRef} className="p-10">
+                            <div className="flex justify-between items-center border-b-4 border-[#062C1B] pb-6 mb-8">
+                                <img src={NEW_LOGO_URL} className="h-16" crossOrigin="anonymous" />
+                                <div className="text-right">
+                                    <h1 className="text-3xl font-black uppercase">Relatório de Mortalidade</h1>
+                                    <p className="text-emerald-600 font-black text-[10px] tracking-widest uppercase">Resumo Geral de Campo • Fazenda Oásis</p>
                                 </div>
                             </div>
                             
-                            <div className="space-y-10">
+                            <div className="grid grid-cols-3 gap-4 mb-8">
+                                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 text-center">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">Transplantado Geral</p>
+                                    <p className="text-2xl font-black text-[#062C1B]">{stats.totalTransplantadoGeral.toLocaleString('pt-BR')}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 text-center">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">Total Óbitos</p>
+                                    <p className="text-2xl font-black text-red-600">{stats.totalPerdas.toLocaleString('pt-BR')}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 text-center">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">Saldo Ativo</p>
+                                    <p className="text-2xl font-black text-emerald-600">{(stats.totalTransplantadoGeral - stats.totalPerdas).toLocaleString('pt-BR')}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
                                 {blocosPerda.map(b => (
-                                    <div key={b.id} className="border-4 border-slate-100 rounded-[3rem] overflow-hidden">
-                                        <div className="bg-[#062C1B] text-white p-6 flex justify-between items-center">
-                                            <span className="text-2xl font-black uppercase">{b.nome}</span>
-                                            <span className="text-emerald-400 font-black">ESTOQUE ATUAL: {b.perdas.reduce((a,p)=>a+p.totalPos, 0).toLocaleString('pt-BR')} UN</span>
+                                    <div key={b.id} className="border-2 border-slate-200 rounded-[2rem] overflow-hidden">
+                                        <div className="bg-[#062C1B] text-white p-4 font-black uppercase text-sm flex justify-between items-center">
+                                            <span>{b.nome}</span>
+                                            <span className="text-[10px]">Dias de Campo: {Math.max(...b.perdas.map(p => p.diasTransplantio))}d</span>
                                         </div>
-                                        <div className="p-8 space-y-6">
+                                        <div className="p-4 space-y-4">
                                             {b.perdas.map(p => (
-                                                <div key={p.id} className="grid grid-cols-5 gap-4 p-6 bg-slate-50 rounded-[2.5rem] items-center">
-                                                    <div>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase">Variedade</p>
-                                                        <p className="text-sm font-black">{p.variedade}</p>
-                                                        <p className="text-[9px] text-slate-400 italic">Tempo: {p.diasTransplantio} dias</p>
-                                                    </div>
+                                                <div key={p.id} className="grid grid-cols-5 gap-2 p-4 bg-slate-50 rounded-2xl items-center text-[11px]">
+                                                    <div className="font-black text-slate-800">{p.cultura}</div>
                                                     <div className="text-center">
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase">Lançado</p>
-                                                        <p className="font-black text-slate-800">{p.totalTrans.toLocaleString('pt-BR')}</p>
+                                                        <p className="text-slate-400 uppercase text-[8px]">Transplante</p>
+                                                        <span className="font-bold">{p.totalTrans.toLocaleString('pt-BR')}</span>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-[9px] font-black text-red-400 uppercase">Óbitos</p>
-                                                        <p className="font-black text-red-600">-{p.qtd}</p>
+                                                    <div className="text-center text-red-600 font-black">
+                                                        <p className="text-red-300 uppercase text-[8px]">Óbitos</p>
+                                                        -{p.qtd.toLocaleString('pt-BR')}
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-[9px] font-black text-emerald-500 uppercase">Estoque</p>
-                                                        <p className="text-xl font-black text-emerald-600">{p.totalPos.toLocaleString('pt-BR')}</p>
+                                                    <div className="text-center text-emerald-600 font-black">
+                                                        <p className="text-emerald-300 uppercase text-[8px]">Saldo Pós</p>
+                                                        {p.totalPos.toLocaleString('pt-BR')}
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[9px] font-black text-orange-500 uppercase">Revisão Sugerida</p>
-                                                        <p className="font-black text-orange-700">{p.dataRevisao.split('-').reverse().join('/')}</p>
+                                                        <p className="text-slate-400 uppercase text-[8px]">Revisão</p>
+                                                        <span className="font-bold">{p.dataRevisao.split('-').reverse().join('/')}</span>
                                                     </div>
                                                 </div>
                                             ))}
