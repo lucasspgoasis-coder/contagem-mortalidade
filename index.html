@@ -39,7 +39,7 @@
         const { useState, useEffect, useMemo } = React;
 
         const NEW_LOGO_URL = "https://i.imgur.com/wEozr34.png";
-        const LISTA_BLOCOS_PADRAO = Array.from({ length: 10 }, (_, i) => `BLOCO ${String(i + 1).padStart(2, '0')}`);
+        const LISTA_BLOCOS_PADRAO = Array.from({ length: 15 }, (_, i) => `BLOCO ${String(i + 1).padStart(2, '0')}`);
         const LISTA_VARIEDADES = ["Syngenta BRO", "Master Tsv", "Pharlap", "Jiraya F1", "OUTRA..."];
         const MUDAS_POR_BANDEJA = 200;
 
@@ -70,6 +70,93 @@
             return result.toISOString().split('T')[0];
         };
 
+        const ComparisonDashboard = ({ reg }) => {
+            const valP = parseFloat(reg.percPlantio) || 0;
+            const valC = parseFloat(reg.percCampo) || 0;
+            const totalPerdas = valP + valC || 0.1;
+            
+            const maxPlantado = Math.max(reg.somaAreaA, reg.somaAreaB, 1);
+            const widthA = (reg.somaAreaA / maxPlantado) * 100;
+            const widthB = (reg.somaAreaB / maxPlantado) * 100;
+
+            return (
+                <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 mt-4 flex flex-col gap-8">
+                    {/* Linha Superior: Gráfico de Pizza centralizado */}
+                    <div className="flex flex-col items-center">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Proporção de Perdas (%)</p>
+                        <div className="flex items-center gap-8">
+                            <div className="relative w-28 h-28 shrink-0">
+                                <svg viewBox="0 0 42 42" className="w-full h-full -rotate-90">
+                                    <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#fee2e2" strokeWidth="6"></circle>
+                                    <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#ef4444" strokeWidth="6" strokeDasharray={`${(valC/totalPerdas)*100} ${100 - (valC/totalPerdas)*100}`} strokeDashoffset="0"></circle>
+                                    <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#f97316" strokeWidth="6" strokeDasharray={`${(valP/totalPerdas)*100} ${100 - (valP/totalPerdas)*100}`} strokeDashoffset={`${-(valC/totalPerdas)*100}`}></circle>
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-[12px] font-black text-slate-900 leading-none">{(valP + valC).toFixed(1)}%</span>
+                                    <span className="text-[7px] font-bold text-slate-400 uppercase mt-1">Total</span>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                    <div>
+                                        <p className="text-[8px] font-black text-slate-400 uppercase">No Plantio</p>
+                                        <p className="text-xs font-black text-orange-600">{reg.percPlantio}%</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <div>
+                                        <p className="text-[8px] font-black text-slate-400 uppercase">No Campo</p>
+                                        <p className="text-xs font-black text-red-600">{reg.percCampo}%</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Linha Inferior: Gráfico de Barras Horizontais */}
+                    <div className="flex flex-col gap-4 border-t border-slate-200 pt-6">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume Plantado por Área (un)</p>
+                        
+                        <div className="space-y-4">
+                            {/* Barra Área A */}
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-end px-1">
+                                    <span className="text-[10px] font-black text-emerald-800 uppercase">Área A</span>
+                                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 shadow-sm">
+                                        {formatNum(reg.somaAreaA)}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-6 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out"
+                                        style={{ width: `${widthA}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                            {/* Barra Área B */}
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-end px-1">
+                                    <span className="text-[10px] font-black text-emerald-950 uppercase">Área B</span>
+                                    <span className="text-[10px] font-black text-emerald-900 bg-emerald-200 px-2 py-0.5 rounded-lg border border-emerald-300 shadow-sm">
+                                        {formatNum(reg.somaAreaB)}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-6 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-[#062C1B] rounded-full transition-all duration-700 ease-out"
+                                        style={{ width: `${widthB}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         function App() {
             const [blocosData, setBlocosData] = useState([]);
             const [editingRef, setEditingRef] = useState(null);
@@ -87,12 +174,12 @@
             });
 
             useEffect(() => {
-                const localData = localStorage.getItem('oasis_mortalidade_v23');
+                const localData = localStorage.getItem('oasis_mortalidade_v24');
                 if (localData) setBlocosData(JSON.parse(localData));
             }, []);
 
             const saveToLocal = (data) => {
-                localStorage.setItem('oasis_mortalidade_v23', JSON.stringify(data));
+                localStorage.setItem('oasis_mortalidade_v24', JSON.stringify(data));
                 setBlocosData(data);
             };
 
@@ -195,77 +282,6 @@
                 }, 500);
             };
 
-            const ComparisonDashboard = ({ reg }) => {
-                const valP = parseFloat(reg.percPlantio) || 0;
-                const valC = parseFloat(reg.percCampo) || 0;
-                const totalPerdas = valP + valC || 1;
-                
-                // SVG Pizza
-                const radius = 15.9155;
-                const circumference = 2 * Math.PI * radius;
-                
-                // Barras Area A/B
-                const maxPlantado = Math.max(reg.somaAreaA, reg.somaAreaB, 1);
-                const heightA = (reg.somaAreaA / maxPlantado) * 80; // 80px max height
-                const heightB = (reg.somaAreaB / maxPlantado) * 80;
-
-                return (
-                    <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 mt-4 grid md:grid-cols-2 gap-8">
-                        {/* Pizza */}
-                        <div className="flex flex-col items-center">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-4">Proporção Perdas</p>
-                            <div className="flex items-center gap-4 w-full">
-                                <div className="relative w-24 h-24 shrink-0">
-                                    <svg viewBox="0 0 42 42" className="w-full h-full -rotate-90">
-                                        <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#fee2e2" strokeWidth="6"></circle>
-                                        <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#ef4444" strokeWidth="6" strokeDasharray={`${(valC/totalPerdas)*100} ${100 - (valC/totalPerdas)*100}`} strokeDashoffset="0"></circle>
-                                        <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#f97316" strokeWidth="6" strokeDasharray={`${(valP/totalPerdas)*100} ${100 - (valP/totalPerdas)*100}`} strokeDashoffset={`${-(valC/totalPerdas)*100}`}></circle>
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-[12px] font-black text-slate-900 leading-none">{(valP + valC).toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[8px] font-bold text-slate-500">BANDEJA</span></div>
-                                        <span className="text-[10px] font-black text-orange-600">{reg.percPlantio}%</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-[8px] font-bold text-slate-500">CAMPO</span></div>
-                                        <span className="text-[10px] font-black text-red-600">{reg.percCampo}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Barras Lado A vs B */}
-                        <div className="flex flex-col items-center">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-4">Plantado Lado A vs B</p>
-                            <div className="flex items-end justify-center gap-8 h-[100px] w-full px-4 border-b border-slate-200">
-                                {/* Barra Lado A */}
-                                <div className="relative flex flex-col items-center w-12 group">
-                                    <span className="absolute -top-6 text-[10px] font-black text-emerald-700 whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 shadow-sm">{formatNum(reg.somaAreaA)}</span>
-                                    <div 
-                                        className="w-full bg-emerald-600 rounded-t-xl transition-all duration-500" 
-                                        style={{ height: `${heightA}px` }}
-                                    ></div>
-                                    <p className="text-[9px] font-black text-slate-500 mt-2">ÁREA A</p>
-                                </div>
-                                {/* Barra Lado B */}
-                                <div className="relative flex flex-col items-center w-12 group">
-                                    <span className="absolute -top-6 text-[10px] font-black text-emerald-900 whitespace-nowrap bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 shadow-sm">{formatNum(reg.somaAreaB)}</span>
-                                    <div 
-                                        className="w-full bg-emerald-900 rounded-t-xl transition-all duration-500" 
-                                        style={{ height: `${heightB}px` }}
-                                    ></div>
-                                    <p className="text-[9px] font-black text-slate-500 mt-2">ÁREA B</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
             const RegistroCard = ({ reg, blocoNome, isExport = false }) => (
                 <div className={`bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm ${isExport ? 'mb-10 ring-1 ring-slate-100' : ''}`}>
                     {isExport && (
@@ -286,8 +302,8 @@
                             </div>
                         </div>
                         <div className="flex flex-col items-end text-right">
-                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Total Plantado Geral</p>
-                            <p className="text-xl font-black text-slate-900 leading-none">{formatNum(reg.totalTransplantadoGeral)}</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Total Plantado Efetivo</p>
+                            <p className="text-xl font-black text-slate-900 leading-none">{formatNum(reg.totalTransplantadoGeral)} <span className="text-xs text-slate-400 font-bold ml-1">un</span></p>
                         </div>
                     </div>
 
@@ -302,16 +318,10 @@
                         </div>
                     </div>
                     
-                    {/* Painel de Gráficos */}
-                    <div className="mb-6">
-                         <div className="flex items-center gap-2 mb-2 px-2">
-                            <SvgIcon name="chart" className="text-emerald-600 w-3 h-3" />
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Painel de Performance e Volume</p>
-                        </div>
-                        <ComparisonDashboard reg={reg} />
-                    </div>
+                    {/* Painel de Gráficos Integrado */}
+                    <ComparisonDashboard reg={reg} />
 
-                    <div className="bg-emerald-50/30 p-5 rounded-[2rem] mt-6 mb-6 border border-emerald-100">
+                    <div className="bg-emerald-50/40 p-5 rounded-[2rem] mt-6 mb-6 border border-emerald-100">
                         <p className="text-[9px] font-black text-emerald-800 uppercase text-center tracking-widest mb-4 opacity-70">Detalhes de Infraestrutura</p>
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-3">
@@ -340,7 +350,7 @@
                     </div>
 
                     <div className="space-y-3 mb-6">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">Variedades</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">Variedades Plantadas</p>
                         {reg.variedades.map((v, i) => (
                             <div key={i} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center">
                                 <div>
@@ -348,7 +358,7 @@
                                     <p className="text-[8px] text-slate-400 font-bold">{v.bandejas} Bandj. | {formatNum(v.totalMudas)} Mudas</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[8px] font-black text-emerald-600 uppercase">Plantado</p>
+                                    <p className="text-[8px] font-black text-emerald-600 uppercase">Efetuado</p>
                                     <p className="text-xs font-black text-emerald-800">{formatNum(v.transplantadoVariedade)}</p>
                                 </div>
                             </div>
@@ -393,7 +403,7 @@
                                 <img src={NEW_LOGO_URL} className="h-10" />
                                 <div>
                                     <h1 className="font-black uppercase text-lg leading-none tracking-tight">Fazenda Oásis</h1>
-                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest leading-none mt-1">Mortalidade de Plantio</p>
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest leading-none mt-1">Gestão de Mortalidade</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -458,61 +468,61 @@
                                                 </div>
                                             </div>
                                         ))}
-                                        <button type="button" onClick={() => setFormData({...formData, variedadesList: [...formData.variedadesList, { id: Math.random().toString(36).substr(2, 9), nome: 'Syngenta BRO', bandejas: '', totalMudas: '', transplantadoVariedade: '' }]})} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-[9px] font-black text-slate-400 uppercase hover:bg-emerald-50 transition-all">+ Variedade</button>
+                                        <button type="button" onClick={() => setFormData({...formData, variedadesList: [...formData.variedadesList, { id: Math.random().toString(36).substr(2, 9), nome: 'Syngenta BRO', bandejas: '', totalMudas: '', transplantadoVariedade: '' }]})} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-[9px] font-black text-slate-400 uppercase hover:bg-emerald-50 transition-all">+ Adicionar Variedade</button>
                                     </div>
 
                                     <div className="bg-emerald-900/5 p-4 rounded-[2rem] border border-emerald-100 space-y-4">
-                                        <div className="flex items-center gap-2 px-1"><SvgIcon name="droplet" className="text-emerald-700 w-3 h-3" /><p className="text-[8px] font-black text-emerald-800 uppercase tracking-widest">Infra Lado A</p></div>
+                                        <div className="flex items-center gap-2 px-1"><SvgIcon name="droplet" className="text-emerald-700 w-3 h-3" /><p className="text-[8px] font-black text-emerald-800 uppercase tracking-widest">Infraestrutura Lado A</p></div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Mudas Plantadas</p><input type="number" value={formData.transplantadoA} onChange={e => setFormData({...formData, transplantadoA: e.target.value})} className="w-full p-3 bg-white border border-emerald-100 rounded-2xl text-xs font-black outline-none" placeholder="Total Lado A" /></div>
-                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Micro</p><input type="number" value={formData.microA} onChange={e => setFormData({...formData, microA: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Cant." /></div>
-                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Aspersor</p><input type="number" value={formData.asperA} onChange={e => setFormData({...formData, asperA: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Cant." /></div>
-                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Total Linhas</p><input type="number" value={formData.linhasA} onChange={e => setFormData({...formData, linhasA: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Linhas Lado A" /></div>
+                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Mudas Efetuadas (un)</p><input type="number" value={formData.transplantadoA} onChange={e => setFormData({...formData, transplantadoA: e.target.value})} className="w-full p-3 bg-white border border-emerald-100 rounded-2xl text-xs font-black outline-none" placeholder="Total Lado A" /></div>
+                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Microasp.</p><input type="number" value={formData.microA} onChange={e => setFormData({...formData, microA: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Qtde" /></div>
+                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Aspersor</p><input type="number" value={formData.asperA} onChange={e => setFormData({...formData, asperA: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Qtde" /></div>
+                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Total Linhas</p><input type="number" value={formData.linhasA} onChange={e => setFormData({...formData, linhasA: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Qtde Linhas Lado A" /></div>
                                         </div>
                                     </div>
 
                                     <div className="bg-emerald-900/5 p-4 rounded-[2rem] border border-emerald-100 space-y-4">
-                                        <div className="flex items-center gap-2 px-1"><SvgIcon name="droplet" className="text-emerald-700 w-3 h-3" /><p className="text-[8px] font-black text-emerald-800 uppercase tracking-widest">Infra Lado B</p></div>
+                                        <div className="flex items-center gap-2 px-1"><SvgIcon name="droplet" className="text-emerald-700 w-3 h-3" /><p className="text-[8px] font-black text-emerald-800 uppercase tracking-widest">Infraestrutura Lado B</p></div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Mudas Plantadas</p><input type="number" value={formData.transplantadoB} onChange={e => setFormData({...formData, transplantadoB: e.target.value})} className="w-full p-3 bg-white border border-emerald-100 rounded-2xl text-xs font-black outline-none" placeholder="Total Lado B" /></div>
-                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Micro</p><input type="number" value={formData.microB} onChange={e => setFormData({...formData, microB: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Cant." /></div>
-                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Aspersor</p><input type="number" value={formData.asperB} onChange={e => setFormData({...formData, asperB: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Cant." /></div>
-                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Total Linhas</p><input type="number" value={formData.linhasB} onChange={e => setFormData({...formData, linhasB: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Linhas Lado B" /></div>
+                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Mudas Efetuadas (un)</p><input type="number" value={formData.transplantadoB} onChange={e => setFormData({...formData, transplantadoB: e.target.value})} className="w-full p-3 bg-white border border-emerald-100 rounded-2xl text-xs font-black outline-none" placeholder="Total Lado B" /></div>
+                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Microasp.</p><input type="number" value={formData.microB} onChange={e => setFormData({...formData, microB: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Qtde" /></div>
+                                            <div><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Aspersor</p><input type="number" value={formData.asperB} onChange={e => setFormData({...formData, asperB: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Qtde" /></div>
+                                            <div className="col-span-2"><p className="text-[7px] font-black text-slate-400 uppercase mb-1 ml-1">Total Linhas</p><input type="number" value={formData.linhasB} onChange={e => setFormData({...formData, linhasB: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-center" placeholder="Qtde Linhas Lado B" /></div>
                                         </div>
                                     </div>
 
                                     <div className="bg-slate-900 p-4 rounded-3xl text-white shadow-lg">
-                                        <div className="flex justify-between items-center mb-1"><p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Plantado Total</p><SvgIcon name="target" className="w-4 h-4 text-emerald-400" /></div>
-                                        <p className="text-3xl font-black">{formatNum(calcGeral.totalEfetivo)}</p>
+                                        <div className="flex justify-between items-center mb-1"><p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Efetivo Total</p><SvgIcon name="target" className="w-4 h-4 text-emerald-400" /></div>
+                                        <p className="text-3xl font-black">{formatNum(calcGeral.totalEfetivo)} <span className="text-sm text-slate-400 font-bold">mudas</span></p>
                                     </div>
 
                                     <div className="space-y-4 pt-4 border-t border-slate-100">
                                         <div className="bg-orange-50 p-4 rounded-3xl border border-orange-100">
-                                            <div className="flex justify-between items-center mb-2"><label className="text-[9px] font-black text-orange-700 uppercase">Perda Bandeja</label><span className="text-[10px] font-black text-orange-600">{calcGeral.percPlantio}%</span></div>
+                                            <div className="flex justify-between items-center mb-2"><label className="text-[9px] font-black text-orange-700 uppercase">Morte Bandeja</label><span className="text-[10px] font-black text-orange-600">{calcGeral.percPlantio}%</span></div>
                                             <input type="number" value={formData.perdaPlantio} onChange={e => setFormData({...formData, perdaPlantio: e.target.value})} className="w-full p-3 bg-white border border-orange-200 rounded-2xl text-xs font-black outline-none" placeholder="Mudas descartadas" />
                                         </div>
                                         <div className="bg-red-50 p-4 rounded-3xl border border-red-100">
-                                            <div className="flex justify-between items-center mb-2"><label className="text-[9px] font-black text-red-700 uppercase">Mortalidade Campo</label><span className="text-[10px] font-black text-red-600">{calcGeral.percCampo}%</span></div>
+                                            <div className="flex justify-between items-center mb-2"><label className="text-[9px] font-black text-red-700 uppercase">Morte no Campo</label><span className="text-[10px] font-black text-red-600">{calcGeral.percCampo}%</span></div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <input type="number" value={formData.perdaContagemA} onChange={e => setFormData({...formData, perdaContagemA: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-2xl text-xs font-black text-center" placeholder="Perda Lado A" />
                                                 <input type="number" value={formData.perdaContagemB} onChange={e => setFormData({...formData, perdaContagemB: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-2xl text-xs font-black text-center" placeholder="Perda Lado B" />
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="submit" className="w-full py-4 bg-[#062C1B] text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-950 active:scale-95 transition-all">{editingRef ? "Atualizar" : "Salvar Histórico"}</button>
+                                    <button type="submit" className="w-full py-4 bg-[#062C1B] text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-950 active:scale-95 transition-all">{editingRef ? "Atualizar" : "Salvar no Histórico"}</button>
                                 </form>
                             </div>
                         </section>
 
                         <section className="space-y-6">
                             {blocosData.length === 0 ? (
-                                <div className="p-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-300 font-black uppercase text-xs tracking-widest">Sem Registros</div>
+                                <div className="p-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-300 font-black uppercase text-xs tracking-widest">Sem Histórico de Registros</div>
                             ) : (
                                 [...blocosData].reverse().map(bloco => (
                                     <div key={bloco.id} className="bg-white rounded-[2.5rem] border border-slate-200 shadow-md overflow-hidden">
                                         <div className="bg-[#062C1B] p-5 text-white px-8 flex justify-between items-center">
                                             <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2"><span className="w-2 h-6 bg-emerald-400 rounded-full"></span>{bloco.nome}</h3>
-                                            <div className="px-3 py-1 bg-emerald-900/50 rounded-lg text-[9px] font-black uppercase">Histórico</div>
+                                            <div className="px-3 py-1 bg-emerald-900/50 rounded-lg text-[9px] font-black uppercase tracking-widest">Ativo</div>
                                         </div>
                                         <div className="p-6 space-y-8">
                                             {bloco.registros.map(reg => (
