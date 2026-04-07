@@ -20,8 +20,9 @@
             position: absolute;
             left: -9999px;
             top: 0;
-            background: white;
-            width: 1000px;
+            background: #F8FAFC;
+            width: 800px;
+            padding: 40px;
         }
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -48,8 +49,7 @@
                 download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
                 leaf: <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a7 7 0 0 1-10 10Z" />,
                 calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
-                clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
-                alert: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>
+                target: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>
             };
             return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name]}</svg>;
         };
@@ -65,30 +65,30 @@
             const [editingRef, setEditingRef] = useState(null);
             const [showExportTemplate, setShowExportTemplate] = useState(false);
 
-            const initialVariedadeState = {
-                id: Math.random().toString(36).substr(2, 9),
-                nome: 'Syngenta BRO',
-                bandejas: '',
-                totalMudas: '',
-                totalTransplantado: ''
-            };
-
             const [formData, setFormData] = useState({
                 nomeBloco: 'BLOCO 01',
                 dataContagem: new Date().toISOString().split('T')[0],
                 perdaPlantio: '',
                 perdaContagemA: '',
                 perdaContagemB: '',
-                variedadesList: [{...initialVariedadeState}]
+                variedadesList: [{ 
+                    id: Math.random().toString(36).substr(2, 9), 
+                    nome: 'Syngenta BRO', 
+                    bandejas: '', 
+                    totalMudas: '', 
+                    transplantadoVariedade: '',
+                    transplantadoA: '', 
+                    transplantadoB: '' 
+                }]
             });
 
             useEffect(() => {
-                const localData = localStorage.getItem('oasis_mortalidade_v12');
+                const localData = localStorage.getItem('oasis_mortalidade_v14');
                 if (localData) setBlocosData(JSON.parse(localData));
             }, []);
 
             const saveToLocal = (data) => {
-                localStorage.setItem('oasis_mortalidade_v12', JSON.stringify(data));
+                localStorage.setItem('oasis_mortalidade_v14', JSON.stringify(data));
                 setBlocosData(data);
             };
 
@@ -108,33 +108,33 @@
 
             const calcGeral = useMemo(() => {
                 let mudasTotais = 0;
-                let transplantadoTotal = 0;
+                let transplantadoTotalBloco = 0;
+                
                 formData.variedadesList.forEach(v => { 
                     mudasTotais += (parseInt(v.totalMudas) || 0);
-                    transplantadoTotal += (parseInt(v.totalTransplantado) || 0);
+                    transplantadoTotalBloco += (parseInt(v.transplantadoVariedade) || 0);
                 });
 
                 const pP = parseInt(formData.perdaPlantio) || 0;
                 const pA = parseInt(formData.perdaContagemA) || 0;
                 const pB = parseInt(formData.perdaContagemB) || 0;
                 
-                const percPlantio = mudasTotais > 0 ? ((pP / mudasTotais) * 100).toFixed(1) : 0;
-                const percCampo = transplantadoTotal > 0 ? (((pA + pB) / transplantadoTotal) * 100).toFixed(1) : 0;
+                const percPlantio = mudasTotais > 0 ? Math.round((pP / mudasTotais) * 100) : 0;
+                const percCampo = transplantadoTotalBloco > 0 ? Math.round(((pA + pB) / transplantadoTotalBloco) * 100) : 0;
                 
-                return { mudasTotais, transplantadoTotal, percPlantio, percCampo, pP, pA, pB };
+                return { mudasTotais, transplantadoTotalBloco, percPlantio, percCampo, pP, pA, pB };
             }, [formData]);
 
             const handleSave = (e) => {
                 e.preventDefault();
                 const dataContagem = formData.dataContagem;
                 const dataProxima = addDays(dataContagem, 15);
-
                 const novoRegistro = {
                     id: editingRef ? editingRef.regId : Date.now().toString(),
                     dataContagem: dataContagem,
                     dataProxima: dataProxima,
                     mudasTotais: calcGeral.mudasTotais,
-                    totalTransplantado: calcGeral.transplantadoTotal,
+                    totalTransplantadoGeral: calcGeral.transplantadoTotalBloco,
                     perdaPlantio: calcGeral.pP,
                     perdaA: calcGeral.pA,
                     perdaB: calcGeral.pB,
@@ -142,25 +142,23 @@
                     percCampo: calcGeral.percCampo,
                     variedades: formData.variedadesList.map(v => ({...v}))
                 };
-
                 let updated = [...blocosData];
                 if (editingRef) {
                     updated = updated.map(b => b.nome === editingRef.blocoNome ? { ...b, registros: b.registros.filter(r => r.id !== editingRef.regId) } : b);
                 }
-
                 const bIdx = updated.findIndex(b => b.nome === formData.nomeBloco);
                 if (bIdx !== -1) updated[bIdx].registros.push(novoRegistro);
                 else updated.push({ id: Date.now().toString(), nome: formData.nomeBloco, registros: [novoRegistro] });
-
                 saveToLocal(updated.filter(b => b.registros.length > 0));
                 setEditingRef(null);
-                setFormData(prev => ({
-                    ...prev,
+                setFormData({
+                    nomeBloco: 'BLOCO 01',
+                    dataContagem: new Date().toISOString().split('T')[0],
                     perdaPlantio: '',
                     perdaContagemA: '',
                     perdaContagemB: '',
-                    variedadesList: [{ ...initialVariedadeState, id: Math.random().toString(36).substr(2, 9) }]
-                }));
+                    variedadesList: [{ id: Math.random().toString(36).substr(2, 9), nome: 'Syngenta BRO', bandejas: '', totalMudas: '', transplantadoVariedade: '', transplantadoA: '', transplantadoB: '' }]
+                });
             };
 
             const downloadJpeg = async () => {
@@ -168,15 +166,110 @@
                 setTimeout(async () => {
                     const element = document.getElementById('export-container');
                     if (element) {
-                        const canvas = await html2canvas(element, { scale: 2 });
-                        const link = document.createElement('a');
-                        link.download = `Oasis_Mortalidade.jpg`;
-                        link.href = canvas.toDataURL('image/jpeg', 0.9);
-                        link.click();
-                        setShowExportTemplate(false);
+                        try {
+                            const canvas = await html2canvas(element, { 
+                                scale: 2, 
+                                useCORS: true, 
+                                backgroundColor: '#F8FAFC' 
+                            });
+                            const link = document.createElement('a');
+                            link.download = `Oasis_Relatorio_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.jpg`;
+                            link.href = canvas.toDataURL('image/jpeg', 0.9);
+                            link.click();
+                        } catch (err) {
+                            console.error("Erro ao gerar imagem", err);
+                        } finally {
+                            setShowExportTemplate(false);
+                        }
                     }
                 }, 500);
             };
+
+            const RegistroCard = ({ reg, blocoNome, isExport = false }) => (
+                <div className={`group relative bg-slate-50 rounded-[2.5rem] p-6 border border-slate-100 shadow-sm ${isExport ? 'mb-8' : ''}`}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-700">
+                                <SvgIcon name="calendar" className="w-5 h-5"/>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Data Registro</p>
+                                <p className="text-sm font-black text-slate-800">{reg.dataContagem.split('-').reverse().join('/')}</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Total Geral do Bloco</p>
+                            <p className="text-xl font-black text-slate-900 leading-none">{(reg.totalTransplantadoGeral || 0).toLocaleString()} <span className="text-[10px] text-slate-400">plantas</span></p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="bg-white p-4 rounded-3xl border border-orange-100 text-center shadow-sm">
+                            <p className="text-[9px] font-black text-orange-500 uppercase mb-1">Perda Plantio</p>
+                            <p className="text-2xl font-black text-orange-600 leading-none">{reg.percPlantio}%</p>
+                            <p className="text-[9px] font-bold text-orange-400 mt-1 italic">({reg.perdaPlantio} mudas)</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-3xl border border-red-100 text-center shadow-sm">
+                            <p className="text-[9px] font-black text-red-500 uppercase mb-1">Perda Campo</p>
+                            <p className="text-2xl font-black text-red-600 leading-none">{reg.percCampo}%</p>
+                            <p className="text-[9px] font-bold text-red-400 mt-1 italic">({(reg.perdaA || 0) + (reg.perdaB || 0)} mudas)</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 mb-6">
+                        {reg.variedades.map((v, i) => (
+                            <div key={i} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+                                <div className="flex justify-between items-start mb-4 border-b border-slate-50 pb-3">
+                                    <div>
+                                        <p className="font-black text-xs text-emerald-900 uppercase">{v.nome}</p>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase">{v.bandejas} Bandejas / {v.totalMudas} Mudas</p>
+                                    </div>
+                                    <div className="bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 text-right">
+                                        <p className="text-[8px] font-black text-emerald-600 uppercase">Total Variedade</p>
+                                        <p className="text-xs font-black text-emerald-800">{v.transplantadoVariedade || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                                        <p className="text-[8px] text-slate-400 uppercase font-black mb-1">Área A</p>
+                                        <p className="text-sm font-black text-slate-700">{v.transplantadoA || 0}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                                        <p className="text-[8px] text-slate-400 uppercase font-black mb-1">Área B</p>
+                                        <p className="text-sm font-black text-slate-700">{v.transplantadoB || 0}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {!isExport && (
+                        <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                            <div className="flex gap-4 items-center">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase mb-1">Revisão Campo</span>
+                                    <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">{reg.dataProxima ? reg.dataProxima.split('-').reverse().join('/') : '---'}</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => {
+                                    setFormData({
+                                        nomeBloco: blocoNome,
+                                        dataContagem: reg.dataContagem,
+                                        perdaPlantio: reg.perdaPlantio,
+                                        perdaContagemA: reg.perdaA,
+                                        perdaContagemB: reg.perdaB,
+                                        variedadesList: reg.variedades.map(v => ({...v}))
+                                    });
+                                    setEditingRef({ blocoNome, regId: reg.id });
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }} className="p-2 text-slate-400 hover:text-orange-500 rounded-xl transition-all"><SvgIcon name="edit" className="w-5 h-5"/></button>
+                                <button onClick={() => saveToLocal(blocosData.map(b => b.nome === blocoNome ? {...b, registros: b.registros.filter(r => r.id !== reg.id)} : b).filter(b => b.registros.length > 0))} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-all"><SvgIcon name="trash" className="w-5 h-5"/></button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
 
             return (
                 <div className="min-h-screen">
@@ -186,216 +279,136 @@
                                 <img src={NEW_LOGO_URL} className="h-10" />
                                 <div>
                                     <h1 className="font-black uppercase text-lg leading-none tracking-tight">Fazenda Oásis</h1>
-                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Controle de Mortalidade</p>
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest leading-none mt-1">Gestão de Plantio</p>
                                 </div>
                             </div>
-                            <button onClick={downloadJpeg} className="bg-red-600 p-3 rounded-2xl hover:bg-red-700 shadow-lg transition-all active:scale-95">
+                            <button onClick={downloadJpeg} className="bg-red-600 p-3 rounded-2xl hover:bg-red-700 shadow-lg active:scale-95 transition-all">
                                 <SvgIcon name="download" className="w-5 h-5" />
                             </button>
                         </div>
                     </header>
 
-                    <main className="max-w-6xl mx-auto p-4 md:p-6 grid lg:grid-cols-[400px_1fr] gap-8">
-                        {/* COLUNA ESQUERDA: FORMULÁRIO */}
+                    <main className="max-w-6xl mx-auto p-4 md:p-6 grid lg:grid-cols-[460px_1fr] gap-8">
                         <section className="space-y-6">
                             <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100">
                                 <h2 className="text-[11px] font-black uppercase text-slate-400 mb-6 flex items-center gap-2">
                                     <SvgIcon name="leaf" className="text-emerald-600 w-4 h-4" />
-                                    Novo Lançamento
+                                    {editingRef ? 'Editando Lançamento' : 'Novo Lançamento'}
                                 </h2>
-
                                 <form onSubmit={handleSave} className="space-y-5">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Bloco</label>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Bloco de Plantio</label>
                                             <select value={formData.nomeBloco} onChange={e => setFormData({...formData, nomeBloco: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-emerald-500/20">
                                                 {LISTA_BLOCOS_PADRAO.map(b => <option key={b} value={b}>{b}</option>)}
                                             </select>
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data</label>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data Transplante</label>
                                             <input type="date" value={formData.dataContagem} onChange={e => setFormData({...formData, dataContagem: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold outline-none" />
                                         </div>
                                     </div>
-
-                                    <div className="space-y-3">
-                                        <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest px-1">Dados por Variedade</p>
+                                    
+                                    <div className="space-y-4">
+                                        <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest px-1">Variedades do Bloco</p>
                                         {formData.variedadesList.map((v) => (
-                                            <div key={v.id} className="p-4 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                                            <div key={v.id} className="p-4 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 relative overflow-hidden">
                                                 <div className="flex justify-between items-center px-1">
-                                                    <select value={v.nome} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, nome: e.target.value} : item)})} className="bg-transparent text-xs font-black uppercase outline-none text-emerald-900 cursor-pointer">
+                                                    <select value={v.nome} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, nome: e.target.value} : item)})} className="bg-transparent text-xs font-black uppercase outline-none text-emerald-900 z-10">
                                                         {LISTA_VARIEDADES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                                     </select>
                                                     {formData.variedadesList.length > 1 && (
-                                                        <button type="button" onClick={() => setFormData({...formData, variedadesList: formData.variedadesList.filter(item => item.id !== v.id)})} className="text-red-400 p-1 hover:bg-red-50 rounded-lg transition-colors"><SvgIcon name="trash" className="w-4 h-4"/></button>
+                                                        <button type="button" onClick={() => setFormData({...formData, variedadesList: formData.variedadesList.filter(item => item.id !== v.id)})} className="text-red-400 p-1 hover:bg-red-50 rounded-lg transition-colors z-10"><SvgIcon name="trash" className="w-4 h-4"/></button>
                                                     )}
                                                 </div>
-                                                <div className="grid grid-cols-3 gap-3">
+                                                
+                                                {/* Seção Principal: Bandejas e Total Transplantado Manual */}
+                                                <div className="grid grid-cols-3 gap-2">
                                                     <div className="text-center">
-                                                        <p className="text-[8px] font-black text-slate-400 uppercase mb-1.5">Bandejas</p>
-                                                        <input type="number" placeholder="0" value={v.bandejas} onChange={e => handleBandejasChange(v.id, e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center outline-none focus:border-emerald-500" />
+                                                        <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Bandejas</p>
+                                                        <input type="number" value={v.bandejas} onChange={e => handleBandejasChange(v.id, e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center outline-none" placeholder="0" />
                                                     </div>
                                                     <div className="text-center">
-                                                        <p className="text-[8px] font-black text-slate-400 uppercase mb-1.5">Mudas Totais</p>
-                                                        <input type="number" readOnly value={v.totalMudas} className="w-full p-2.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-xs font-black text-center outline-none" />
+                                                        <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Mudas Total</p>
+                                                        <div className="w-full p-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-xs font-black text-center">{v.totalMudas || '0'}</div>
                                                     </div>
                                                     <div className="text-center">
-                                                        <p className="text-[8px] font-black text-emerald-500 uppercase mb-1.5">Transplantado</p>
-                                                        <input type="number" placeholder="0" value={v.totalTransplantado} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, totalTransplantado: e.target.value} : item)})} className="w-full p-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl text-xs font-black text-center outline-none focus:border-emerald-500" />
+                                                        <p className="text-[7px] font-black text-emerald-600 uppercase mb-1">Transplantado</p>
+                                                        <input type="number" value={v.transplantadoVariedade} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, transplantadoVariedade: e.target.value} : item)})} className="w-full p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-black text-center outline-none" placeholder="0" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Detalhamento: Áreas A e B */}
+                                                <div className="bg-white p-3 rounded-2xl border border-slate-200">
+                                                    <p className="text-[7px] font-black text-slate-400 uppercase mb-2 text-center">Registro de Contagem (Opcional)</p>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <p className="text-[7px] font-black text-slate-400 uppercase text-center mb-1">Área A</p>
+                                                            <input type="number" value={v.transplantadoA} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, transplantadoA: e.target.value} : item)})} className="w-full p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-black text-center outline-none" placeholder="0" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[7px] font-black text-slate-400 uppercase text-center mb-1">Área B</p>
+                                                            <input type="number" value={v.transplantadoB} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, transplantadoB: e.target.value} : item)})} className="w-full p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-black text-center outline-none" placeholder="0" />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
-                                        <button type="button" onClick={() => setFormData({...formData, variedadesList: [...formData.variedadesList, { ...initialVariedadeState, id: Math.random().toString(36).substr(2, 9) }]})} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-[9px] font-black text-slate-400 uppercase hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-500 transition-all">+ Adicionar Variedade</button>
+                                        <button type="button" onClick={() => setFormData({...formData, variedadesList: [...formData.variedadesList, { id: Math.random().toString(36).substr(2, 9), nome: 'Syngenta BRO', bandejas: '', totalMudas: '', transplantadoVariedade: '', transplantadoA: '', transplantadoB: '' }]})} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-[9px] font-black text-slate-400 uppercase hover:bg-emerald-50 transition-all">+ Adicionar Outra Variedade</button>
                                     </div>
 
-                                    <div className="space-y-4 pt-5 border-t border-slate-100">
+                                    <div className="bg-slate-900 p-4 rounded-3xl text-white shadow-lg">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Soma Total do Bloco</p>
+                                            <SvgIcon name="target" className="w-4 h-4 text-emerald-400" />
+                                        </div>
+                                        <p className="text-3xl font-black">{calcGeral.transplantadoTotalBloco.toLocaleString()} <span className="text-xs font-normal text-emerald-300">plantas</span></p>
+                                    </div>
+
+                                    <div className="space-y-4 pt-4">
                                         <div className="bg-orange-50 p-4 rounded-3xl border border-orange-100">
                                             <div className="flex justify-between items-center mb-2">
-                                                <label className="text-[9px] font-black text-orange-700 uppercase">Perda no Plantio</label>
-                                                <span className="text-[11px] font-black text-orange-600 bg-white px-2 py-0.5 rounded-lg shadow-sm">{calcGeral.percPlantio}%</span>
+                                                <label className="text-[9px] font-black text-orange-700 uppercase">Perda no Plantio (Bandeja)</label>
+                                                <span className="text-[11px] font-black text-orange-600 bg-white px-2 py-0.5 rounded-lg">{calcGeral.percPlantio}%</span>
                                             </div>
-                                            <input type="number" value={formData.perdaPlantio} onChange={e => setFormData({...formData, perdaPlantio: e.target.value})} className="w-full p-3 bg-white border border-orange-200 rounded-2xl text-xs font-black outline-none placeholder:font-normal" placeholder="Total de mudas descartadas hoje" />
+                                            <input type="number" value={formData.perdaPlantio} onChange={e => setFormData({...formData, perdaPlantio: e.target.value})} className="w-full p-3 bg-white border border-orange-200 rounded-2xl text-xs font-black outline-none" placeholder="Qtd mudas perdidas" />
                                         </div>
-
                                         <div className="bg-red-50 p-4 rounded-3xl border border-red-100">
                                             <div className="flex justify-between items-center mb-2">
-                                                <label className="text-[9px] font-black text-red-700 uppercase">Perda de Campo (Mortalidade)</label>
-                                                <span className="text-[11px] font-black text-red-600 bg-white px-2 py-0.5 rounded-lg shadow-sm">{calcGeral.percCampo}%</span>
+                                                <label className="text-[9px] font-black text-red-700 uppercase">Mortalidade no Campo</label>
+                                                <span className="text-[11px] font-black text-red-600 bg-white px-2 py-0.5 rounded-lg">{calcGeral.percCampo}%</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-1">
-                                                    <p className="text-[7px] font-bold text-red-400 uppercase text-center">Lado A</p>
-                                                    <input type="number" placeholder="0" value={formData.perdaContagemA} onChange={e => setFormData({...formData, perdaContagemA: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-2xl text-xs font-black text-center outline-none focus:border-red-400" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[7px] font-bold text-red-400 uppercase text-center">Lado B</p>
-                                                    <input type="number" placeholder="0" value={formData.perdaContagemB} onChange={e => setFormData({...formData, perdaContagemB: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-2xl text-xs font-black text-center outline-none focus:border-red-400" />
-                                                </div>
+                                                <input type="number" value={formData.perdaContagemA} onChange={e => setFormData({...formData, perdaContagemA: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-2xl text-xs font-black text-center" placeholder="Morte Área A" />
+                                                <input type="number" value={formData.perdaContagemB} onChange={e => setFormData({...formData, perdaContagemB: e.target.value})} className="w-full p-3 bg-white border border-red-200 rounded-2xl text-xs font-black text-center" placeholder="Morte Área B" />
                                             </div>
                                         </div>
                                     </div>
-
-                                    <button type="submit" className="w-full py-4 bg-[#062C1B] text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-950 transition-all transform active:scale-95">
-                                        {editingRef ? "Atualizar Bloco" : "Salvar Registro"}
+                                    <button type="submit" className="w-full py-4 bg-[#062C1B] text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-950 active:scale-95 transition-all">
+                                        {editingRef ? "Atualizar Bloco" : "Salvar Registro de Bloco"}
                                     </button>
                                 </form>
                             </div>
                         </section>
 
-                        {/* COLUNA DIREITA: HISTÓRICO COM PRÓXIMA CONTAGEM E PERDAS TOTAIS */}
-                        <section className="space-y-5">
+                        <section className="space-y-6">
                             {blocosData.length === 0 ? (
-                                <div className="p-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-300 font-black uppercase text-xs flex flex-col items-center gap-4">
-                                    <div className="p-5 bg-slate-50 rounded-full text-slate-200"><SvgIcon name="leaf" className="w-10 h-10" /></div>
-                                    Aguardando Lançamentos
+                                <div className="p-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-300 font-black uppercase text-xs">
+                                    Histórico Vazio
                                 </div>
                             ) : (
                                 [...blocosData].reverse().map(bloco => (
-                                    <div key={bloco.id} className="bg-white rounded-[2.5rem] border border-slate-200 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                                    <div key={bloco.id} className="bg-white rounded-[2.5rem] border border-slate-200 shadow-md overflow-hidden">
                                         <div className="bg-[#062C1B] p-5 text-white px-8 flex justify-between items-center">
-                                            <h3 className="font-black text-sm uppercase tracking-[0.2em]">{bloco.nome}</h3>
-                                            <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest italic">Monitorização</div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-8 bg-emerald-400 rounded-full"></div>
+                                                <h3 className="font-black text-base uppercase tracking-widest">{bloco.nome}</h3>
+                                            </div>
+                                            <p className="text-[10px] font-bold uppercase text-emerald-400">{bloco.registros.length} Registro(s)</p>
                                         </div>
-                                        <div className="p-6 space-y-6">
+                                        <div className="p-6 space-y-8">
                                             {bloco.registros.map(reg => (
-                                                <div key={reg.id} className="group relative bg-slate-50 rounded-[2.5rem] p-6 border border-slate-100 hover:border-emerald-100 hover:bg-white transition-all shadow-sm">
-                                                    
-                                                    {/* CABEÇALHO COM DATAS */}
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-700">
-                                                                <SvgIcon name="calendar" className="w-5 h-5"/>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Última Contagem</p>
-                                                                <p className="text-sm font-black text-slate-800">{reg.dataContagem.split('-').reverse().join('/')}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-4 bg-orange-50 border border-orange-100 px-5 py-3 rounded-2xl">
-                                                            <div className="text-orange-600">
-                                                                <SvgIcon name="clock" className="w-5 h-5"/>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-black text-orange-400 uppercase leading-none mb-1 tracking-tighter">Próxima Contagem (15 dias)</p>
-                                                                <p className="text-sm font-black text-orange-700">{reg.dataProxima ? reg.dataProxima.split('-').reverse().join('/') : addDays(reg.dataContagem, 15).split('-').reverse().join('/')}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* INDICADORES DE PERDA - AGORA COM TOTAL DE MUDAS */}
-                                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                                        <div className="bg-white p-4 rounded-3xl border border-orange-100 text-center shadow-sm relative overflow-hidden">
-                                                            <div className="absolute top-0 right-0 p-1 text-orange-200">
-                                                                <SvgIcon name="alert" className="w-10 h-10 opacity-20" />
-                                                            </div>
-                                                            <p className="text-[9px] font-black text-orange-500 uppercase mb-1">Perda Plantio</p>
-                                                            <div className="flex items-baseline justify-center gap-1">
-                                                                <p className="text-2xl font-black text-orange-600 leading-none">{reg.percPlantio}%</p>
-                                                            </div>
-                                                            <p className="text-[9px] font-bold text-orange-400 mt-1 italic">({reg.perdaPlantio} mudas)</p>
-                                                        </div>
-                                                        <div className="bg-white p-4 rounded-3xl border border-red-100 text-center shadow-sm relative overflow-hidden">
-                                                            <div className="absolute top-0 right-0 p-1 text-red-200">
-                                                                <SvgIcon name="alert" className="w-10 h-10 opacity-20" />
-                                                            </div>
-                                                            <p className="text-[9px] font-black text-red-500 uppercase mb-1">Perda Campo</p>
-                                                            <div className="flex items-baseline justify-center gap-1">
-                                                                <p className="text-2xl font-black text-red-600 leading-none">{reg.percCampo}%</p>
-                                                            </div>
-                                                            <p className="text-[9px] font-bold text-red-400 mt-1 italic">({(reg.perdaA || 0) + (reg.perdaB || 0)} mudas)</p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* VARIEDADES */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                                                        {reg.variedades.map((v, i) => (
-                                                            <div key={i} className="bg-white/50 p-4 rounded-2xl border border-slate-100">
-                                                                <p className="font-black text-[11px] text-emerald-900 uppercase mb-2 border-b border-emerald-100/50 pb-1">{v.nome}</p>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    <div>
-                                                                        <p className="text-[8px] text-slate-400 uppercase font-black">Mudas Totais</p>
-                                                                        <p className="text-xs font-black text-slate-600">{v.totalMudas}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-[8px] text-emerald-500 uppercase font-black">Transplantado</p>
-                                                                        <p className="text-xs font-black text-emerald-700">{v.totalTransplantado}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-
-                                                    {/* DETALHE DE LADOS E AÇÕES */}
-                                                    <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                                                        <div className="flex gap-4">
-                                                            <div className="px-3 py-1 bg-slate-100 rounded-lg flex items-center gap-2">
-                                                                <span className="text-[8px] font-black text-slate-400 uppercase leading-none">Lado A</span>
-                                                                <span className="text-xs font-black text-slate-700 leading-none">{reg.perdaA || 0}</span>
-                                                            </div>
-                                                            <div className="px-3 py-1 bg-slate-100 rounded-lg flex items-center gap-2">
-                                                                <span className="text-[8px] font-black text-slate-400 uppercase leading-none">Lado B</span>
-                                                                <span className="text-xs font-black text-slate-700 leading-none">{reg.perdaB || 0}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => {
-                                                                setFormData({
-                                                                    nomeBloco: bloco.nome,
-                                                                    dataContagem: reg.dataContagem,
-                                                                    perdaPlantio: reg.perdaPlantio,
-                                                                    perdaContagemA: reg.perdaA,
-                                                                    perdaContagemB: reg.perdaB,
-                                                                    variedadesList: reg.variedades.map(v => ({...v}))
-                                                                });
-                                                                setEditingRef({ blocoNome: bloco.nome, regId: reg.id });
-                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                            }} className="p-2.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-2xl transition-all"><SvgIcon name="edit" className="w-5 h-5"/></button>
-                                                            <button onClick={() => saveToLocal(blocosData.map(b => b.nome === bloco.nome ? {...b, registros: b.registros.filter(r => r.id !== reg.id)} : b).filter(b => b.registros.length > 0))} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"><SvgIcon name="trash" className="w-5 h-5"/></button>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <RegistroCard key={reg.id} reg={reg} blocoNome={bloco.nome} />
                                             ))}
                                         </div>
                                     </div>
@@ -404,52 +417,35 @@
                         </section>
                     </main>
 
-                    {/* EXPORTADOR JPEG */}
                     {showExportTemplate && (
                         <div id="export-container">
-                            <div className="p-10 bg-white">
-                                <div className="flex justify-between items-center border-b-8 border-emerald-900 pb-8 mb-10">
-                                    <img src={NEW_LOGO_URL} className="h-16" />
-                                    <div className="text-right">
-                                        <h2 className="text-3xl font-black uppercase text-emerald-900 leading-tight">Relatório de Mortalidade</h2>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Gestão Fazenda Oásis</p>
+                            <div className="flex justify-between items-center mb-10 pb-6 border-b-2 border-emerald-900/10">
+                                <div className="flex items-center gap-4">
+                                    <img src={NEW_LOGO_URL} className="h-12" crossOrigin="anonymous" />
+                                    <div>
+                                        <h1 className="font-black uppercase text-2xl text-[#062C1B]">Relatório de Plantio</h1>
+                                        <p className="text-xs text-emerald-600 font-bold uppercase tracking-widest">Fazenda Oásis</p>
                                     </div>
                                 </div>
-                                <div className="space-y-10">
-                                    {blocosData.map(b => (
-                                        <div key={b.id} className="border-4 border-slate-100 rounded-[3rem] overflow-hidden shadow-sm">
-                                            <div className="bg-emerald-900 text-white p-6 font-black text-lg uppercase tracking-widest">{b.nome}</div>
-                                            <div className="p-8">
-                                                {b.registros.map(r => (
-                                                    <div key={r.id} className="mb-10 last:mb-0 border-b-2 last:border-0 border-slate-50 pb-10">
-                                                        <div className="flex justify-between items-start mb-6">
-                                                            <div>
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Data Registo</p>
-                                                                <p className="text-lg font-black text-slate-800">{r.dataContagem.split('-').reverse().join('/')}</p>
-                                                            </div>
-                                                            <div className="bg-orange-50 px-6 py-3 rounded-2xl border border-orange-100 text-right">
-                                                                <p className="text-[10px] font-black text-orange-500 uppercase mb-1">Próxima Contagem</p>
-                                                                <p className="text-lg font-black text-orange-700">{r.dataProxima ? r.dataProxima.split('-').reverse().join('/') : addDays(r.dataContagem, 15).split('-').reverse().join('/')}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-6 mb-6">
-                                                            <div className="bg-slate-50 p-6 rounded-3xl text-center">
-                                                                <p className="text-xs font-black text-orange-500 uppercase mb-2">Mortalidade Plantio</p>
-                                                                <p className="text-4xl font-black text-orange-600">{r.percPlantio}%</p>
-                                                                <p className="text-xs font-bold text-orange-400">({r.perdaPlantio} mudas)</p>
-                                                            </div>
-                                                            <div className="bg-slate-50 p-6 rounded-3xl text-center">
-                                                                <p className="text-xs font-black text-red-500 uppercase mb-2">Mortalidade Campo</p>
-                                                                <p className="text-4xl font-black text-red-600">{r.percCampo}%</p>
-                                                                <p className="text-xs font-bold text-red-400">({(r.perdaA || 0) + (r.perdaB || 0)} mudas)</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="text-right">
+                                    <p className="text-xs font-black text-slate-400 uppercase">Exportado em</p>
+                                    <p className="text-lg font-black text-slate-800">{new Date().toLocaleDateString('pt-BR')}</p>
                                 </div>
+                            </div>
+                            
+                            <div className="space-y-12">
+                                {blocosData.map(bloco => (
+                                    <div key={bloco.id} className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden">
+                                        <div className="bg-slate-900 p-4 text-white px-8">
+                                            <h3 className="font-black text-lg uppercase tracking-widest">{bloco.nome}</h3>
+                                        </div>
+                                        <div className="p-8 space-y-10">
+                                            {bloco.registros.map(reg => (
+                                                <RegistroCard key={reg.id} reg={reg} blocoNome={bloco.nome} isExport={true} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
