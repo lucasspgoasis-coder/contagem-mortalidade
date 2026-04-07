@@ -122,7 +122,7 @@
 
                 const tA = parseInt(formData.transplantadoA) || 0;
                 const tB = parseInt(formData.transplantadoB) || 0;
-                const totalEfetivo = tA + tB; // Soma exata solicitada
+                const totalEfetivo = tA + tB; // Soma exata priorizada
 
                 const pP = parseInt(formData.perdaPlantio) || 0;
                 const pA = parseInt(formData.perdaContagemA) || 0;
@@ -369,14 +369,18 @@
                                                     )}
                                                 </div>
                                                 
-                                                <div className="grid grid-cols-2 gap-2">
+                                                <div className="grid grid-cols-3 gap-2">
                                                     <div>
-                                                        <p className="text-[7px] font-black text-slate-400 uppercase mb-1 text-center">Qtd Bandejas</p>
+                                                        <p className="text-[7px] font-black text-slate-400 uppercase mb-1 text-center">Bandejas</p>
                                                         <input type="number" value={v.bandejas} onChange={e => handleBandejasChange(v.id, e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center outline-none" placeholder="0" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-[7px] font-black text-blue-600 uppercase mb-1 text-center">Total Mudas</p>
+                                                        <p className="text-[7px] font-black text-blue-600 uppercase mb-1 text-center">Mudas</p>
                                                         <div className="w-full p-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-[10px] font-black text-center h-[34px] flex items-center justify-center">{formatNum(v.totalMudas)}</div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[7px] font-black text-emerald-600 uppercase mb-1 text-center">Transplantado</p>
+                                                        <input type="number" value={v.transplantadoVariedade} onChange={e => setFormData({...formData, variedadesList: formData.variedadesList.map(item => item.id === v.id ? {...item, transplantadoVariedade: e.target.value} : item)})} className="w-full p-2 bg-white border border-emerald-100 rounded-xl text-xs font-bold text-center outline-none" placeholder="0" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -400,7 +404,7 @@
 
                                     <div className="bg-slate-900 p-4 rounded-3xl text-white shadow-lg">
                                         <div className="flex justify-between items-center mb-1">
-                                            <p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Plantado Efetivo</p>
+                                            <p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Plantado Efetivo (Total)</p>
                                             <SvgIcon name="target" className="w-4 h-4 text-emerald-400" />
                                         </div>
                                         <p className="text-3xl font-black">{formatNum(calcGeral.totalEfetivo)} <span className="text-xs font-normal text-emerald-300">un</span></p>
@@ -409,10 +413,10 @@
                                     <div className="space-y-4 pt-4 border-t border-slate-100">
                                         <div className="bg-orange-50 p-4 rounded-3xl border border-orange-100">
                                             <div className="flex justify-between items-center mb-2">
-                                                <label className="text-[9px] font-black text-orange-700 uppercase">Perda no Plantio (Bloco)</label>
+                                                <label className="text-[9px] font-black text-orange-700 uppercase">Perda no Plantio (Bandeja)</label>
                                                 <span className="text-[10px] font-black text-orange-600">{calcGeral.percPlantio}%</span>
                                             </div>
-                                            <input type="number" value={formData.perdaPlantio} onChange={e => setFormData({...formData, perdaPlantio: e.target.value})} className="w-full p-3 bg-white border border-orange-200 rounded-2xl text-xs font-black outline-none" placeholder="Total de mudas perdidas hoje" />
+                                            <input type="number" value={formData.perdaPlantio} onChange={e => setFormData({...formData, perdaPlantio: e.target.value})} className="w-full p-3 bg-white border border-orange-200 rounded-2xl text-xs font-black outline-none" placeholder="Total de mudas perdidas" />
                                         </div>
 
                                         <div className="bg-red-50 p-4 rounded-3xl border border-red-100">
