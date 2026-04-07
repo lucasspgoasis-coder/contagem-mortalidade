@@ -28,9 +28,6 @@
             -webkit-appearance: none;
             margin: 0;
         }
-        .custom-card-shadow {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        }
     </style>
 </head>
 <body>
@@ -50,9 +47,17 @@
                 edit: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
                 download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
                 leaf: <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a7 7 0 0 1-10 10Z" />,
-                calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>
+                calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
+                clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+                alert: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>
             };
             return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name]}</svg>;
+        };
+
+        const addDays = (dateStr, days) => {
+            const result = new Date(dateStr);
+            result.setDate(result.getDate() + days);
+            return result.toISOString().split('T')[0];
         };
 
         function App() {
@@ -78,12 +83,12 @@
             });
 
             useEffect(() => {
-                const localData = localStorage.getItem('oasis_mortalidade_v10');
+                const localData = localStorage.getItem('oasis_mortalidade_v12');
                 if (localData) setBlocosData(JSON.parse(localData));
             }, []);
 
             const saveToLocal = (data) => {
-                localStorage.setItem('oasis_mortalidade_v10', JSON.stringify(data));
+                localStorage.setItem('oasis_mortalidade_v12', JSON.stringify(data));
                 setBlocosData(data);
             };
 
@@ -121,9 +126,13 @@
 
             const handleSave = (e) => {
                 e.preventDefault();
+                const dataContagem = formData.dataContagem;
+                const dataProxima = addDays(dataContagem, 15);
+
                 const novoRegistro = {
                     id: editingRef ? editingRef.regId : Date.now().toString(),
-                    dataContagem: formData.dataContagem,
+                    dataContagem: dataContagem,
+                    dataProxima: dataProxima,
                     mudasTotais: calcGeral.mudasTotais,
                     totalTransplantado: calcGeral.transplantadoTotal,
                     perdaPlantio: calcGeral.pP,
@@ -187,7 +196,7 @@
                     </header>
 
                     <main className="max-w-6xl mx-auto p-4 md:p-6 grid lg:grid-cols-[400px_1fr] gap-8">
-                        {/* COLUNA ESQUERDA: ENTRADA */}
+                        {/* COLUNA ESQUERDA: FORMULÁRIO */}
                         <section className="space-y-6">
                             <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100">
                                 <h2 className="text-[11px] font-black uppercase text-slate-400 mb-6 flex items-center gap-2">
@@ -274,7 +283,7 @@
                             </div>
                         </section>
 
-                        {/* COLUNA DIREITA: HISTÓRICO VISUAL (FLASH CARDS) */}
+                        {/* COLUNA DIREITA: HISTÓRICO COM PRÓXIMA CONTAGEM E PERDAS TOTAIS */}
                         <section className="space-y-5">
                             {blocosData.length === 0 ? (
                                 <div className="p-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-300 font-black uppercase text-xs flex flex-col items-center gap-4">
@@ -286,46 +295,71 @@
                                     <div key={bloco.id} className="bg-white rounded-[2.5rem] border border-slate-200 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                                         <div className="bg-[#062C1B] p-5 text-white px-8 flex justify-between items-center">
                                             <h3 className="font-black text-sm uppercase tracking-[0.2em]">{bloco.nome}</h3>
-                                            <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase">Histórico</div>
+                                            <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest italic">Monitorização</div>
                                         </div>
                                         <div className="p-6 space-y-6">
                                             {bloco.registros.map(reg => (
-                                                <div key={reg.id} className="group relative bg-slate-50 rounded-[2rem] p-5 border border-slate-100 hover:border-emerald-100 hover:bg-white transition-all">
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
+                                                <div key={reg.id} className="group relative bg-slate-50 rounded-[2.5rem] p-6 border border-slate-100 hover:border-emerald-100 hover:bg-white transition-all shadow-sm">
+                                                    
+                                                    {/* CABEÇALHO COM DATAS */}
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                                                         <div className="flex items-center gap-4">
                                                             <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-700">
                                                                 <SvgIcon name="calendar" className="w-5 h-5"/>
                                                             </div>
                                                             <div>
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Data do Lançamento</p>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Última Contagem</p>
                                                                 <p className="text-sm font-black text-slate-800">{reg.dataContagem.split('-').reverse().join('/')}</p>
                                                             </div>
                                                         </div>
-                                                        
-                                                        <div className="flex gap-4 md:gap-8">
-                                                            <div className="text-center md:text-right">
-                                                                <p className="text-[8px] font-black text-orange-500 uppercase mb-1">Perda Plantio</p>
-                                                                <p className="text-lg font-black text-orange-600 leading-none">{reg.percPlantio}%</p>
+
+                                                        <div className="flex items-center gap-4 bg-orange-50 border border-orange-100 px-5 py-3 rounded-2xl">
+                                                            <div className="text-orange-600">
+                                                                <SvgIcon name="clock" className="w-5 h-5"/>
                                                             </div>
-                                                            <div className="text-center md:text-right">
-                                                                <p className="text-[8px] font-black text-red-500 uppercase mb-1">Perda Campo</p>
-                                                                <p className="text-lg font-black text-red-600 leading-none">{reg.percCampo}%</p>
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-orange-400 uppercase leading-none mb-1 tracking-tighter">Próxima Contagem (15 dias)</p>
+                                                                <p className="text-sm font-black text-orange-700">{reg.dataProxima ? reg.dataProxima.split('-').reverse().join('/') : addDays(reg.dataContagem, 15).split('-').reverse().join('/')}</p>
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    {/* DETALHES DE VARIEDADES NO CARD */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+                                                    {/* INDICADORES DE PERDA - AGORA COM TOTAL DE MUDAS */}
+                                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                                        <div className="bg-white p-4 rounded-3xl border border-orange-100 text-center shadow-sm relative overflow-hidden">
+                                                            <div className="absolute top-0 right-0 p-1 text-orange-200">
+                                                                <SvgIcon name="alert" className="w-10 h-10 opacity-20" />
+                                                            </div>
+                                                            <p className="text-[9px] font-black text-orange-500 uppercase mb-1">Perda Plantio</p>
+                                                            <div className="flex items-baseline justify-center gap-1">
+                                                                <p className="text-2xl font-black text-orange-600 leading-none">{reg.percPlantio}%</p>
+                                                            </div>
+                                                            <p className="text-[9px] font-bold text-orange-400 mt-1 italic">({reg.perdaPlantio} mudas)</p>
+                                                        </div>
+                                                        <div className="bg-white p-4 rounded-3xl border border-red-100 text-center shadow-sm relative overflow-hidden">
+                                                            <div className="absolute top-0 right-0 p-1 text-red-200">
+                                                                <SvgIcon name="alert" className="w-10 h-10 opacity-20" />
+                                                            </div>
+                                                            <p className="text-[9px] font-black text-red-500 uppercase mb-1">Perda Campo</p>
+                                                            <div className="flex items-baseline justify-center gap-1">
+                                                                <p className="text-2xl font-black text-red-600 leading-none">{reg.percCampo}%</p>
+                                                            </div>
+                                                            <p className="text-[9px] font-bold text-red-400 mt-1 italic">({(reg.perdaA || 0) + (reg.perdaB || 0)} mudas)</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* VARIEDADES */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                                                         {reg.variedades.map((v, i) => (
-                                                            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                                                <p className="font-black text-[11px] text-emerald-900 uppercase border-b border-emerald-50 pb-2 mb-2">{v.nome}</p>
+                                                            <div key={i} className="bg-white/50 p-4 rounded-2xl border border-slate-100">
+                                                                <p className="font-black text-[11px] text-emerald-900 uppercase mb-2 border-b border-emerald-100/50 pb-1">{v.nome}</p>
                                                                 <div className="grid grid-cols-2 gap-2">
                                                                     <div>
-                                                                        <p className="text-[8px] text-slate-400 uppercase font-bold">Mudas Totais</p>
+                                                                        <p className="text-[8px] text-slate-400 uppercase font-black">Mudas Totais</p>
                                                                         <p className="text-xs font-black text-slate-600">{v.totalMudas}</p>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[8px] text-emerald-500 uppercase font-bold">Transplantado</p>
+                                                                        <p className="text-[8px] text-emerald-500 uppercase font-black">Transplantado</p>
                                                                         <p className="text-xs font-black text-emerald-700">{v.totalTransplantado}</p>
                                                                     </div>
                                                                 </div>
@@ -333,16 +367,16 @@
                                                         ))}
                                                     </div>
 
-                                                    {/* RESUMO DE CONTAGEM DE LADOS */}
-                                                    <div className="flex justify-between items-center p-4 bg-[#062C1B]/5 rounded-2xl border border-[#062C1B]/10">
-                                                        <div className="flex gap-6">
-                                                            <div>
-                                                                <p className="text-[8px] font-black text-slate-400 uppercase">Perda Lado A</p>
-                                                                <p className="text-sm font-black text-slate-700">{reg.perdaA || 0}</p>
+                                                    {/* DETALHE DE LADOS E AÇÕES */}
+                                                    <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                                                        <div className="flex gap-4">
+                                                            <div className="px-3 py-1 bg-slate-100 rounded-lg flex items-center gap-2">
+                                                                <span className="text-[8px] font-black text-slate-400 uppercase leading-none">Lado A</span>
+                                                                <span className="text-xs font-black text-slate-700 leading-none">{reg.perdaA || 0}</span>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-[8px] font-black text-slate-400 uppercase">Perda Lado B</p>
-                                                                <p className="text-sm font-black text-slate-700">{reg.perdaB || 0}</p>
+                                                            <div className="px-3 py-1 bg-slate-100 rounded-lg flex items-center gap-2">
+                                                                <span className="text-[8px] font-black text-slate-400 uppercase leading-none">Lado B</span>
+                                                                <span className="text-xs font-black text-slate-700 leading-none">{reg.perdaB || 0}</span>
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-2">
@@ -357,8 +391,8 @@
                                                                 });
                                                                 setEditingRef({ blocoNome: bloco.nome, regId: reg.id });
                                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                            }} className="p-2 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all"><SvgIcon name="edit" className="w-4 h-4"/></button>
-                                                            <button onClick={() => saveToLocal(blocosData.map(b => b.nome === bloco.nome ? {...b, registros: b.registros.filter(r => r.id !== reg.id)} : b).filter(b => b.registros.length > 0))} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><SvgIcon name="trash" className="w-4 h-4"/></button>
+                                                            }} className="p-2.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-2xl transition-all"><SvgIcon name="edit" className="w-5 h-5"/></button>
+                                                            <button onClick={() => saveToLocal(blocosData.map(b => b.nome === bloco.nome ? {...b, registros: b.registros.filter(r => r.id !== reg.id)} : b).filter(b => b.registros.length > 0))} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"><SvgIcon name="trash" className="w-5 h-5"/></button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -377,42 +411,38 @@
                                 <div className="flex justify-between items-center border-b-8 border-emerald-900 pb-8 mb-10">
                                     <img src={NEW_LOGO_URL} className="h-16" />
                                     <div className="text-right">
-                                        <h2 className="text-3xl font-black uppercase text-emerald-900">Mortalidade Consolidada</h2>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Fazenda Oásis</p>
+                                        <h2 className="text-3xl font-black uppercase text-emerald-900 leading-tight">Relatório de Mortalidade</h2>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Gestão Fazenda Oásis</p>
                                     </div>
                                 </div>
-                                <div className="space-y-8">
+                                <div className="space-y-10">
                                     {blocosData.map(b => (
-                                        <div key={b.id} className="border-2 border-slate-200 rounded-[2.5rem] overflow-hidden">
-                                            <div className="bg-emerald-900 text-white p-5 font-black text-sm uppercase tracking-widest">{b.nome}</div>
-                                            <div className="p-6">
+                                        <div key={b.id} className="border-4 border-slate-100 rounded-[3rem] overflow-hidden shadow-sm">
+                                            <div className="bg-emerald-900 text-white p-6 font-black text-lg uppercase tracking-widest">{b.nome}</div>
+                                            <div className="p-8">
                                                 {b.registros.map(r => (
-                                                    <div key={r.id} className="mb-8 last:mb-0 border-b-2 last:border-0 border-slate-100 pb-8">
-                                                        <div className="flex justify-between items-end mb-4">
-                                                            <span className="text-xs font-black text-slate-400">DATA: {r.dataContagem.split('-').reverse().join('/')}</span>
-                                                            <div className="flex gap-10">
-                                                                <div className="text-right">
-                                                                    <p className="text-[9px] font-black text-orange-500 uppercase">Inicial</p>
-                                                                    <p className="text-xl font-black text-orange-600">{r.percPlantio}%</p>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <p className="text-[9px] font-black text-red-500 uppercase">Campo</p>
-                                                                    <p className="text-xl font-black text-red-600">{r.percCampo}%</p>
-                                                                </div>
+                                                    <div key={r.id} className="mb-10 last:mb-0 border-b-2 last:border-0 border-slate-50 pb-10">
+                                                        <div className="flex justify-between items-start mb-6">
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Data Registo</p>
+                                                                <p className="text-lg font-black text-slate-800">{r.dataContagem.split('-').reverse().join('/')}</p>
+                                                            </div>
+                                                            <div className="bg-orange-50 px-6 py-3 rounded-2xl border border-orange-100 text-right">
+                                                                <p className="text-[10px] font-black text-orange-500 uppercase mb-1">Próxima Contagem</p>
+                                                                <p className="text-lg font-black text-orange-700">{r.dataProxima ? r.dataProxima.split('-').reverse().join('/') : addDays(r.dataContagem, 15).split('-').reverse().join('/')}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            {r.variedades.map((v, i) => (
-                                                                <div key={i} className="bg-slate-50 p-4 rounded-2xl">
-                                                                    <p className="font-black text-[10px] text-emerald-900 mb-2 uppercase">{v.nome}</p>
-                                                                    <p className="text-[9px] font-bold text-slate-500 uppercase">Mudas Totais: <span className="text-slate-800">{v.totalMudas}</span></p>
-                                                                    <p className="text-[9px] font-bold text-emerald-600 uppercase">Transplantado: <span className="font-black">{v.totalTransplantado}</span></p>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <div className="mt-4 flex gap-6 text-[10px] font-black uppercase text-slate-400">
-                                                            <span>Lado A: {r.perdaA || 0}</span>
-                                                            <span>Lado B: {r.perdaB || 0}</span>
+                                                        <div className="grid grid-cols-2 gap-6 mb-6">
+                                                            <div className="bg-slate-50 p-6 rounded-3xl text-center">
+                                                                <p className="text-xs font-black text-orange-500 uppercase mb-2">Mortalidade Plantio</p>
+                                                                <p className="text-4xl font-black text-orange-600">{r.percPlantio}%</p>
+                                                                <p className="text-xs font-bold text-orange-400">({r.perdaPlantio} mudas)</p>
+                                                            </div>
+                                                            <div className="bg-slate-50 p-6 rounded-3xl text-center">
+                                                                <p className="text-xs font-black text-red-500 uppercase mb-2">Mortalidade Campo</p>
+                                                                <p className="text-4xl font-black text-red-600">{r.percCampo}%</p>
+                                                                <p className="text-xs font-bold text-red-400">({(r.perdaA || 0) + (r.perdaB || 0)} mudas)</p>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ))}
