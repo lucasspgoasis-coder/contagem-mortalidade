@@ -32,6 +32,16 @@
             -webkit-appearance: none;
             margin: 0;
         }
+        /* Estilo para as badges de percentagem com contorno corrigido */
+        .badge-pct {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-weight: 900;
+            padding: 0.25rem 0.75rem;
+            line-height: 1;
+        }
     </style>
 </head>
 <body>
@@ -65,15 +75,16 @@
             const [showExport, setShowExport] = useState(false);
             const reportRef = useRef(null);
 
-            const getFutureDate = (days) => {
-                const d = new Date();
-                d.setDate(d.getDate() + days);
-                return d.toISOString().split('T')[0];
+            // Função para calcular data + dias
+            const calculateFutureDate = (baseDate, days) => {
+                const date = new Date(baseDate + 'T12:00:00');
+                date.setDate(date.getDate() + days);
+                return date.toISOString().split('T')[0];
             };
 
             const initialForm = {
                 dataContagem: new Date().toISOString().split('T')[0],
-                proximaContagem: getFutureDate(15),
+                proximaContagem: calculateFutureDate(new Date().toISOString().split('T')[0], 15),
                 totalBandejas: '',
                 linhasA: '',
                 linhasB: '',
@@ -85,6 +96,12 @@
             };
 
             const [formData, setFormData] = useState(initialForm);
+
+            // Sempre que a data de referência mudar, atualiza a próxima contagem para +15 dias
+            useEffect(() => {
+                const next = calculateFutureDate(formData.dataContagem, 15);
+                setFormData(prev => ({ ...prev, proximaContagem: next }));
+            }, [formData.dataContagem]);
 
             useEffect(() => {
                 const saved = localStorage.getItem('oasis_perdas_v3');
@@ -128,7 +145,9 @@
                     totalPerdasPos: calculos.totalPPos
                 };
                 save([novo, ...registros]);
-                setFormData({...initialForm, dataContagem: new Date().toISOString().split('T')[0], proximaContagem: getFutureDate(15)});
+                // Reiniciar formulário com datas atualizadas
+                const today = new Date().toISOString().split('T')[0];
+                setFormData({...initialForm, dataContagem: today, proximaContagem: calculateFutureDate(today, 15)});
             };
 
             const exportPDF = async () => {
@@ -243,7 +262,7 @@
                                     <div className="bg-orange-50 p-3 rounded-2xl border border-orange-200">
                                         <div className="flex justify-between items-center mb-0.5">
                                             <label className="text-[8px] font-black text-orange-700 uppercase">Perda Transp.</label>
-                                            <span className="text-[9px] font-black text-orange-800 bg-orange-200 px-1.5 py-0.5 rounded-md">{calculos.percPerdaLote}%</span>
+                                            <span className="badge-pct bg-orange-200 text-orange-800 text-[14px]">{calculos.percPerdaLote}%</span>
                                         </div>
                                         <input type="number" placeholder="0" value={formData.totalPerdasLote} onChange={e => setFormData({...formData, totalPerdasLote: e.target.value})} className="w-full bg-transparent text-xl text-center font-black text-orange-900 outline-none" required />
                                     </div>
@@ -251,7 +270,7 @@
                                     <div className="bg-red-50 p-3 rounded-2xl border border-red-200 space-y-2">
                                         <div className="flex justify-between items-center border-b border-red-200 pb-1.5">
                                             <label className="text-[8px] font-black text-red-700 uppercase">Perdas Pós-T.</label>
-                                            <span className="text-[9px] font-black text-red-800">{calculos.percPos}% Geral</span>
+                                            <span className="badge-pct bg-red-200 text-red-800 text-[14px]">{calculos.percPos}% Geral</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="text-center">
@@ -328,7 +347,7 @@
                                                 <div className="bg-red-50 p-4 flex flex-col items-center justify-center">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <p className="text-[9px] font-black text-red-600 uppercase tracking-widest">Perdas Pós-T.</p>
-                                                        <span className="bg-red-200 text-red-800 text-[8px] font-black px-1.5 py-0.5 rounded-md">{reg.percPos}%</span>
+                                                        <span className="badge-pct bg-red-200 text-red-800 text-[14px]">{reg.percPos}%</span>
                                                     </div>
                                                     <p className="text-3xl font-black text-red-900 mb-2 leading-none">{formatNumber(reg.totalPerdasPos)}</p>
                                                     <div className="flex gap-6 w-full justify-center">
@@ -348,7 +367,7 @@
                                         <div className="flex justify-between items-center bg-orange-50 px-6 py-3 rounded-2xl border border-orange-100">
                                             <div className="flex items-center gap-3">
                                                 <p className="text-[9px] font-black text-orange-700 uppercase tracking-widest leading-none">Perda Transp.</p>
-                                                <span className="bg-orange-200 text-orange-800 text-[9px] font-black px-2 py-0.5 rounded-md">{reg.percPerdaLote}%</span>
+                                                <span className="badge-pct bg-orange-200 text-orange-800 text-[14px]">{reg.percPerdaLote}%</span>
                                             </div>
                                             <p className="text-xl font-black text-orange-900 leading-none">{formatNumber(reg.totalPerdasLote)} <span className="text-xs font-bold opacity-40">MUDAS</span></p>
                                         </div>
@@ -422,7 +441,7 @@
                                                 <div className="bg-red-50 p-5 flex flex-col items-center justify-center">
                                                     <div className="flex items-center gap-2 mb-2 leading-none">
                                                         <p className="text-[9px] font-black text-red-600 uppercase tracking-widest leading-none">Perdas Pós-T.</p>
-                                                        <span className="bg-red-200 text-red-800 text-[8px] font-black px-1.5 py-0.5 rounded-md">{reg.percPos}%</span>
+                                                        <span className="badge-pct bg-red-200 text-red-800 text-[12px]">{reg.percPos}%</span>
                                                     </div>
                                                     <p className="text-4xl font-black text-red-950 mb-4 leading-none">{formatNumber(reg.totalPerdasPos)}</p>
                                                     <div className="flex justify-around w-full">
@@ -442,7 +461,7 @@
                                         <div className="flex justify-between items-center bg-orange-50 px-6 py-4 rounded-2xl border border-orange-100 mb-4">
                                             <div className="flex items-center gap-4 leading-none">
                                                 <p className="text-[9px] font-black text-orange-700 uppercase tracking-[0.2em] leading-none">Perda Transp.</p>
-                                                <span className="bg-orange-200 text-orange-800 text-[9px] font-black px-2 py-0.5 rounded-md">{reg.percPerdaLote}%</span>
+                                                <span className="badge-pct bg-orange-200 text-orange-800 text-[12px]">{reg.percPerdaLote}%</span>
                                             </div>
                                             <p className="text-3xl font-black text-orange-950 leading-none">{formatNumber(reg.totalPerdasLote)} <span className="text-sm opacity-40">MUDAS</span></p>
                                         </div>
