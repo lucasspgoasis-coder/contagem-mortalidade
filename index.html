@@ -75,16 +75,20 @@
             const [showExport, setShowExport] = useState(false);
             const reportRef = useRef(null);
 
-            // Função para calcular data + dias
+            // Função para calcular data + dias com validação de erro
             const calculateFutureDate = (baseDate, days) => {
+                if (!baseDate) return "";
                 const date = new Date(baseDate + 'T12:00:00');
+                if (isNaN(date.getTime())) return ""; // Evita o erro de Invalid Time Value
                 date.setDate(date.getDate() + days);
                 return date.toISOString().split('T')[0];
             };
 
-            const initialForm = {
-                dataContagem: new Date().toISOString().split('T')[0],
-                proximaContagem: calculateFutureDate(new Date().toISOString().split('T')[0], 15),
+            const getToday = () => new Date().toISOString().split('T')[0];
+
+            const [formData, setFormData] = useState({
+                dataContagem: getToday(),
+                proximaContagem: calculateFutureDate(getToday(), 15),
                 totalBandejas: '',
                 linhasA: '',
                 linhasB: '',
@@ -93,14 +97,14 @@
                 totalPerdasLote: '',
                 perdaPosA: '',
                 perdaPosB: ''
-            };
-
-            const [formData, setFormData] = useState(initialForm);
+            });
 
             // Sempre que a data de referência mudar, atualiza a próxima contagem para +15 dias
             useEffect(() => {
                 const next = calculateFutureDate(formData.dataContagem, 15);
-                setFormData(prev => ({ ...prev, proximaContagem: next }));
+                if (next) {
+                    setFormData(prev => ({ ...prev, proximaContagem: next }));
+                }
             }, [formData.dataContagem]);
 
             useEffect(() => {
@@ -145,9 +149,20 @@
                     totalPerdasPos: calculos.totalPPos
                 };
                 save([novo, ...registros]);
-                // Reiniciar formulário com datas atualizadas
-                const today = new Date().toISOString().split('T')[0];
-                setFormData({...initialForm, dataContagem: today, proximaContagem: calculateFutureDate(today, 15)});
+                
+                const today = getToday();
+                setFormData({
+                    dataContagem: today,
+                    proximaContagem: calculateFutureDate(today, 15),
+                    totalBandejas: '',
+                    linhasA: '',
+                    linhasB: '',
+                    transplantadoA: '',
+                    transplantadoB: '',
+                    totalPerdasLote: '',
+                    perdaPosA: '',
+                    perdaPosB: ''
+                });
             };
 
             const exportPDF = async () => {
@@ -214,7 +229,9 @@
                                         </div>
                                         <div className="bg-emerald-50 p-2.5 rounded-xl text-center">
                                             <label className="text-[8px] font-black text-emerald-600 uppercase block mb-1">Próxima Contagem</label>
-                                            <div className="text-[11px] font-black text-emerald-700">{formData.proximaContagem.split('-').reverse().join('/')}</div>
+                                            <div className="text-[11px] font-black text-emerald-700">
+                                                {formData.proximaContagem ? formData.proximaContagem.split('-').reverse().join('/') : "--/--/--"}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -313,7 +330,7 @@
                                             <div className="flex items-center gap-3">
                                                 <div className="text-right">
                                                     <p className="text-[8px] font-black text-emerald-500 uppercase leading-none">Próxima Contagem</p>
-                                                    <p className="text-xs font-black text-emerald-800">{reg.proximaContagem.split('-').reverse().join('/')}</p>
+                                                    <p className="text-xs font-black text-emerald-800">{reg.proximaContagem ? reg.proximaContagem.split('-').reverse().join('/') : "--/--/--"}</p>
                                                 </div>
                                                 <button onClick={() => save(registros.filter(r => r.id !== reg.id))} className="text-slate-300 hover:text-red-500 transition-colors p-1.5">
                                                     <SvgIcon name="trash" className="w-4 h-4" />
@@ -468,7 +485,7 @@
 
                                         <div className="p-3 bg-emerald-950 rounded-xl text-center">
                                             <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.3em]">
-                                                Próxima Contagem Agendada: <span className="text-white ml-2">{reg.proximaContagem.split('-').reverse().join('/')}</span>
+                                                Próxima Contagem Agendada: <span className="text-white ml-2">{reg.proximaContagem ? reg.proximaContagem.split('-').reverse().join('/') : "--/--/--"}</span>
                                             </p>
                                         </div>
                                     </div>
