@@ -19,28 +19,34 @@
         }
         .card-shadow { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
         
+        /* Contentor Invisível para Exportação */
         #export-container {
             position: absolute;
             left: -9999px;
             top: 0;
             background: #FFFFFF;
-            width: 794px; 
-            padding: 30px;
+            width: 800px; 
+            padding: 40px;
         }
+
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        /* Estilo para as badges de percentagem com contorno corrigido */
-        .badge-pct {
+
+        /* Badge Oval com Contorno Perfeito e Centralizado */
+        .pct-badge {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             border-radius: 9999px;
-            font-weight: 900;
-            padding: 0.25rem 0.75rem;
             line-height: 1;
+            padding: 4px 12px;
+            font-weight: 900;
+            white-space: nowrap;
+            text-align: center;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -59,7 +65,8 @@
                 trendingDown: <><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></>,
                 check: <polyline points="20 6 9 17 4 12"/>,
                 grid: <><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></>,
-                printer: <><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></>
+                printer: <><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></>,
+                alert: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>
             };
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -75,11 +82,10 @@
             const [showExport, setShowExport] = useState(false);
             const reportRef = useRef(null);
 
-            // Função para calcular data + dias com validação de erro
             const calculateFutureDate = (baseDate, days) => {
                 if (!baseDate) return "";
                 const date = new Date(baseDate + 'T12:00:00');
-                if (isNaN(date.getTime())) return ""; // Evita o erro de Invalid Time Value
+                if (isNaN(date.getTime())) return "";
                 date.setDate(date.getDate() + days);
                 return date.toISOString().split('T')[0];
             };
@@ -99,7 +105,6 @@
                 perdaPosB: ''
             });
 
-            // Sempre que a data de referência mudar, atualiza a próxima contagem para +15 dias
             useEffect(() => {
                 const next = calculateFutureDate(formData.dataContagem, 15);
                 if (next) {
@@ -127,13 +132,16 @@
 
                 const totalTrans = transA + transB;
                 const totalPPos = pPosA + pPosB;
+                const perdaAcumulada = totalPLote + totalPPos;
 
                 return {
                     totalMudas: totalM,
                     percPerdaLote: totalM > 0 ? Math.round((totalPLote / totalM) * 100) : 0,
                     percPos: totalTrans > 0 ? Math.round((totalPPos / totalTrans) * 100) : 0,
                     totalTrans,
-                    totalPPos
+                    totalPPos,
+                    perdaAcumulada,
+                    percGeral: totalM > 0 ? Math.round((perdaAcumulada / totalM) * 100) : 0
                 };
             }, [formData]);
 
@@ -146,7 +154,9 @@
                     percPerdaLote: calculos.percPerdaLote,
                     percPos: calculos.percPos,
                     totalTransplantado: calculos.totalTrans,
-                    totalPerdasPos: calculos.totalPPos
+                    totalPerdasPos: calculos.totalPPos,
+                    perdaAcumulada: calculos.perdaAcumulada,
+                    percGeral: calculos.percGeral
                 };
                 save([novo, ...registros]);
                 
@@ -173,10 +183,11 @@
                     const canvas = await html2canvas(reportRef.current, { 
                         scale: 2,
                         useCORS: true,
-                        backgroundColor: '#FFFFFF'
+                        backgroundColor: '#FFFFFF',
+                        windowWidth: 800
                     });
                     
-                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const { jsPDF } = window.jspdf;
                     const pdf = new jsPDF('p', 'mm', 'a4');
                     
@@ -184,14 +195,14 @@
                     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                     
                     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                    pdf.save(`RELATORIO_OASIS.pdf`);
+                    pdf.save(`RELATORIO_OASIS_${new Date().toLocaleDateString()}.pdf`);
                     
                     setShowExport(false);
-                }, 800);
+                }, 1000);
             };
 
             return (
-                <div className="min-h-screen pb-12">
+                <div className="min-h-screen pb-12 text-slate-900">
                     <header className="bg-[#062C1B] text-white p-4 shadow-xl sticky top-0 z-40">
                         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3">
@@ -213,7 +224,6 @@
                     </header>
 
                     <main className="max-w-6xl mx-auto p-4 grid lg:grid-cols-[340px_1fr] gap-6 mt-2">
-                        {/* Formulário lateral */}
                         <aside>
                             <div className="bg-white p-5 rounded-[2rem] card-shadow border border-slate-200">
                                 <h2 className="text-[10px] font-black text-slate-900 uppercase mb-4 flex items-center gap-2">
@@ -223,11 +233,11 @@
 
                                 <form onSubmit={handleAdd} className="space-y-3">
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-slate-50 p-2.5 rounded-xl">
+                                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                                             <label className="text-[8px] font-black text-slate-400 uppercase block mb-1">Referência</label>
                                             <input type="date" value={formData.dataContagem} onChange={e => setFormData({...formData, dataContagem: e.target.value})} className="w-full bg-transparent text-[11px] font-bold outline-none" required />
                                         </div>
-                                        <div className="bg-emerald-50 p-2.5 rounded-xl text-center">
+                                        <div className="bg-emerald-50 p-2.5 rounded-xl text-center border border-emerald-100">
                                             <label className="text-[8px] font-black text-emerald-600 uppercase block mb-1">Próxima Contagem</label>
                                             <div className="text-[11px] font-black text-emerald-700">
                                                 {formData.proximaContagem ? formData.proximaContagem.split('-').reverse().join('/') : "--/--/--"}
@@ -252,18 +262,19 @@
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-slate-900 p-3 rounded-2xl text-center">
+                                        <div className="bg-slate-900 p-3 rounded-2xl text-center shadow-inner">
                                             <label className="text-[8px] font-black text-slate-500 uppercase block mb-0.5">Bandejas</label>
                                             <input type="number" placeholder="0" value={formData.totalBandejas} onChange={e => setFormData({...formData, totalBandejas: e.target.value})} className="w-full bg-transparent text-white text-center text-xl font-black outline-none" required />
                                         </div>
-                                        <div className="bg-emerald-900 p-3 rounded-2xl text-center flex flex-col justify-center">
+                                        <div className="bg-emerald-900 p-3 rounded-2xl text-center flex flex-col justify-center shadow-inner">
                                             <label className="text-[8px] font-black text-emerald-400 uppercase block mb-0.5">Total Mudas</label>
                                             <div className="text-white text-xl font-black">{formatNumber(calculos.totalMudas)}</div>
                                         </div>
                                     </div>
 
-                                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden">
                                         <label className="text-[8px] font-black text-slate-500 uppercase block text-center mb-2 tracking-widest">Volume Transplantado</label>
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 h-8 w-[1px] bg-slate-200 mt-1"></div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="text-center">
                                                 <label className="text-[7px] font-bold text-slate-400 uppercase block mb-0.5">Lado A</label>
@@ -277,18 +288,23 @@
                                     </div>
 
                                     <div className="bg-orange-50 p-3 rounded-2xl border border-orange-200">
-                                        <div className="flex justify-between items-center mb-0.5">
+                                        <div className="flex justify-between items-center mb-1">
                                             <label className="text-[8px] font-black text-orange-700 uppercase">Perda Transp.</label>
-                                            <span className="badge-pct bg-orange-200 text-orange-800 text-[14px]">{calculos.percPerdaLote}%</span>
+                                            <div className="flex items-center h-full">
+                                                <span className="pct-badge bg-orange-200 text-orange-800 text-[10px]">{calculos.percPerdaLote}%</span>
+                                            </div>
                                         </div>
                                         <input type="number" placeholder="0" value={formData.totalPerdasLote} onChange={e => setFormData({...formData, totalPerdasLote: e.target.value})} className="w-full bg-transparent text-xl text-center font-black text-orange-900 outline-none" required />
                                     </div>
 
-                                    <div className="bg-red-50 p-3 rounded-2xl border border-red-200 space-y-2">
+                                    <div className="bg-red-50 p-3 rounded-2xl border border-red-200 space-y-2 relative overflow-hidden">
                                         <div className="flex justify-between items-center border-b border-red-200 pb-1.5">
                                             <label className="text-[8px] font-black text-red-700 uppercase">Perdas Pós-T.</label>
-                                            <span className="badge-pct bg-red-200 text-red-800 text-[14px]">{calculos.percPos}% Geral</span>
+                                            <div className="flex items-center h-full">
+                                                <span className="pct-badge bg-red-200 text-red-800 text-[10px]">{calculos.percPos}% Geral</span>
+                                            </div>
                                         </div>
+                                        <div className="absolute left-1/2 bottom-3 -translate-x-1/2 h-8 w-[1px] bg-red-200"></div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="text-center">
                                                 <label className="text-[7px] font-bold text-red-500 uppercase block mb-0.5">Lado A</label>
@@ -308,7 +324,6 @@
                             </div>
                         </aside>
 
-                        {/* Listagem */}
                         <section className="space-y-4">
                             {registros.length === 0 ? (
                                 <div className="bg-white p-12 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
@@ -340,13 +355,16 @@
 
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                                             <div className="bg-slate-900 text-white rounded-[1.5rem] p-4 text-center">
-                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mudas Lote</p>
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Lote Mudas</p>
                                                 <p className="text-2xl font-black leading-none">{formatNumber(reg.totalMudas)}</p>
                                                 <p className="text-[8px] font-bold text-slate-500 mt-2 uppercase">{reg.totalBandejas} BDJ</p>
                                             </div>
 
-                                            <div className="md:col-span-3 bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden grid grid-cols-2">
-                                                <div className="bg-emerald-50 p-4 flex flex-col items-center justify-center border-r border-slate-100">
+                                            <div className="md:col-span-3 bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden grid grid-cols-2 relative">
+                                                {/* Divisor vertical */}
+                                                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[70%] w-[1px] bg-slate-100 z-10"></div>
+                                                
+                                                <div className="bg-emerald-50 p-4 flex flex-col items-center justify-center border-r border-slate-100 relative">
                                                     <p className="text-[9px] font-black text-emerald-600 uppercase mb-2 tracking-widest">Total Transplantado</p>
                                                     <p className="text-3xl font-black text-emerald-900 mb-2 leading-none">{formatNumber(reg.totalTransplantado)}</p>
                                                     <div className="flex gap-6 w-full justify-center">
@@ -361,10 +379,10 @@
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="bg-red-50 p-4 flex flex-col items-center justify-center">
-                                                    <div className="flex items-center gap-2 mb-2">
+                                                <div className="bg-red-50 p-4 flex flex-col items-center justify-center relative">
+                                                    <div className="flex items-center gap-2 mb-2 h-6">
                                                         <p className="text-[9px] font-black text-red-600 uppercase tracking-widest">Perdas Pós-T.</p>
-                                                        <span className="badge-pct bg-red-200 text-red-800 text-[14px]">{reg.percPos}%</span>
+                                                        <span className="pct-badge bg-red-200 text-red-800 text-[10px] leading-none self-center">{reg.percPos}%</span>
                                                     </div>
                                                     <p className="text-3xl font-black text-red-900 mb-2 leading-none">{formatNumber(reg.totalPerdasPos)}</p>
                                                     <div className="flex gap-6 w-full justify-center">
@@ -381,12 +399,35 @@
                                             </div>
                                         </div>
 
-                                        <div className="flex justify-between items-center bg-orange-50 px-6 py-3 rounded-2xl border border-orange-100">
-                                            <div className="flex items-center gap-3">
-                                                <p className="text-[9px] font-black text-orange-700 uppercase tracking-widest leading-none">Perda Transp.</p>
-                                                <span className="badge-pct bg-orange-200 text-orange-800 text-[14px]">{reg.percPerdaLote}%</span>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="flex justify-between items-center bg-orange-50 px-6 py-4 rounded-2xl border border-orange-100">
+                                                <div className="flex items-center gap-3">
+                                                    <p className="text-[9px] font-black text-orange-700 uppercase tracking-widest leading-none">Perda Transp.</p>
+                                                    <span className="pct-badge bg-orange-200 text-orange-800 text-[10px]">{reg.percPerdaLote}%</span>
+                                                </div>
+                                                <p className="text-xl font-black text-orange-900 leading-none">{formatNumber(reg.totalPerdasLote)}</p>
                                             </div>
-                                            <p className="text-xl font-black text-orange-900 leading-none">{formatNumber(reg.totalPerdasLote)} <span className="text-xs font-bold opacity-40">MUDAS</span></p>
+
+                                            <div className="flex justify-between items-center bg-slate-900 px-6 py-4 rounded-2xl border border-slate-800 shadow-xl">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-1.5 bg-red-500 rounded text-white shadow-lg shadow-red-500/30">
+                                                        <SvgIcon name="alert" className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Perda Geral</p>
+                                                        <p className="text-[7px] font-bold text-emerald-400 uppercase tracking-widest">Somatório</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex items-center gap-4">
+                                                    <div className="flex flex-col items-end">
+                                                        <p className="text-2xl font-black text-white leading-none mb-1">{formatNumber(reg.perdaAcumulada)}</p>
+                                                        <p className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Eficiência: {100 - (reg.percGeral || 0)}%</p>
+                                                    </div>
+                                                    <div className="pct-badge bg-red-600 text-white min-w-[50px] text-[12px] shadow-lg shadow-red-900/20">
+                                                        {reg.percGeral}%
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 ))
@@ -394,110 +435,123 @@
                         </section>
                     </main>
 
-                    {/* PDF Export View */}
                     {showExport && (
                         <div id="export-container" ref={reportRef}>
-                            <div className="flex justify-between items-center border-b-2 border-[#062C1B] pb-6 mb-8">
-                                <div className="flex items-center gap-6">
-                                    <img src={OASIS_LOGO_URL} alt="Logo" className="h-16" crossOrigin="anonymous" />
+                            <div className="flex justify-between items-end border-b-4 border-[#062C1B] pb-8 mb-10">
+                                <div className="flex items-center gap-8">
+                                    <img src={OASIS_LOGO_URL} alt="Logo" className="h-20" crossOrigin="anonymous" />
                                     <div>
-                                        <h1 className="text-2xl font-black text-[#062C1B] uppercase tracking-tighter leading-none">Relatório de Campo</h1>
-                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mt-2">Eficiência de Produção Agrícola</p>
+                                        <h1 className="text-3xl font-black text-[#062C1B] uppercase tracking-tighter leading-none">Gestão de Perdas</h1>
+                                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-[0.3em] mt-3">Fazenda Oásis - Relatório Gerencial</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Emissão</p>
-                                    <p className="text-lg font-black text-slate-900">{new Date().toLocaleDateString('pt-BR')}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Data de Emissão</p>
+                                    <p className="text-xl font-black text-slate-900">{new Date().toLocaleDateString('pt-BR')}</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
-                                {registros.slice(0, 4).map((reg) => (
-                                    <div key={reg.id} className="relative bg-white p-6 rounded-[2rem] border border-slate-100 mb-6 overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-2 h-full bg-emerald-600"></div>
+                            <div className="space-y-10">
+                                {registros.slice(0, 5).map((reg) => (
+                                    <div key={reg.id} className="relative bg-white p-8 rounded-[2.5rem] border border-slate-100 mb-8 shadow-sm">
+                                        <div className="absolute top-0 left-0 w-3 h-full bg-[#062C1B]"></div>
                                         
-                                        <div className="flex justify-between items-center mb-6">
+                                        <div className="flex justify-between items-center mb-8">
                                             <div>
-                                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1 leading-none">Data Referência</p>
-                                                <p className="text-3xl font-black text-slate-900 tracking-tighter">{reg.dataContagem.split('-').reverse().join('/')}</p>
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Referência de Campo</p>
+                                                <p className="text-4xl font-black text-slate-900 tracking-tighter">{reg.dataContagem.split('-').reverse().join('/')}</p>
                                             </div>
                                             <div className="flex gap-4">
-                                                <div className="text-center bg-slate-50 px-4 py-3 rounded-2xl">
-                                                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Canteiro A</p>
-                                                    <p className="text-lg font-black text-slate-800 leading-none">{reg.linhasA || '0'} L</p>
+                                                <div className="text-center bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Lado A</p>
+                                                    <p className="text-xl font-black text-slate-900">{reg.linhasA || '0'} L</p>
                                                 </div>
-                                                <div className="text-center bg-slate-50 px-4 py-3 rounded-2xl">
-                                                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Canteiro B</p>
-                                                    <p className="text-lg font-black text-slate-800 leading-none">{reg.linhasB || '0'} L</p>
+                                                <div className="text-center bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Lado B</p>
+                                                    <p className="text-xl font-black text-slate-900">{reg.linhasB || '0'} L</p>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-4 gap-4 mb-6">
-                                            <div className="bg-slate-900 rounded-2xl p-5 text-white text-center flex flex-col justify-center">
-                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest leading-none">Total Mudas</p>
-                                                <p className="text-2xl font-black leading-none">{formatNumber(reg.totalMudas)}</p>
-                                                <p className="text-[7px] font-bold text-slate-500 mt-2 uppercase">{reg.totalBandejas} BDJ</p>
+                                        <div className="grid grid-cols-4 gap-4 mb-8">
+                                            <div className="bg-slate-900 rounded-3xl p-6 text-white text-center flex flex-col justify-center border-b-4 border-slate-700">
+                                                <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Lote de Entrada</p>
+                                                <p className="text-3xl font-black leading-none">{formatNumber(reg.totalMudas)}</p>
+                                                <p className="text-[8px] font-bold text-slate-500 mt-3 uppercase tracking-widest">{reg.totalBandejas} Bandejas</p>
                                             </div>
                                             
-                                            <div className="col-span-3 grid grid-cols-2 rounded-2xl overflow-hidden border border-slate-100">
-                                                <div className="bg-emerald-50 p-5 flex flex-col items-center justify-center border-r border-slate-100">
-                                                    <p className="text-[9px] font-black text-emerald-600 uppercase mb-2 tracking-widest leading-none">Total Transplantado</p>
-                                                    <p className="text-4xl font-black text-emerald-950 mb-4 leading-none">{formatNumber(reg.totalTransplantado)}</p>
-                                                    <div className="flex justify-around w-full">
+                                            <div className="col-span-3 grid grid-cols-2 rounded-3xl overflow-hidden border-2 border-slate-50 relative">
+                                                {/* Traço divisor no PDF */}
+                                                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[60%] w-[1px] bg-slate-200 z-10"></div>
+                                                
+                                                <div className="bg-emerald-50 p-6 flex flex-col items-center justify-center border-r-2 border-white">
+                                                    <p className="text-[10px] font-black text-emerald-600 uppercase mb-3 tracking-widest">Transplantado</p>
+                                                    <p className="text-5xl font-black text-emerald-950 mb-5 leading-none">{formatNumber(reg.totalTransplantado)}</p>
+                                                    <div className="flex justify-around w-full px-4">
                                                         <div className="text-center">
-                                                            <p className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1">Lado A</p>
-                                                            <p className="text-xl font-black text-emerald-800 leading-none">{formatNumber(reg.transplantadoA)}</p>
+                                                            <p className="text-[8px] font-black text-emerald-400 uppercase mb-1">Lado A</p>
+                                                            <p className="text-2xl font-black text-emerald-800 leading-none">{formatNumber(reg.transplantadoA)}</p>
                                                         </div>
                                                         <div className="text-center">
-                                                            <p className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1">Lado B</p>
-                                                            <p className="text-xl font-black text-emerald-800 leading-none">{formatNumber(reg.transplantadoB)}</p>
+                                                            <p className="text-[8px] font-black text-emerald-400 uppercase mb-1">Lado B</p>
+                                                            <p className="text-2xl font-black text-emerald-800 leading-none">{formatNumber(reg.transplantadoB)}</p>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="bg-red-50 p-5 flex flex-col items-center justify-center">
-                                                    <div className="flex items-center gap-2 mb-2 leading-none">
-                                                        <p className="text-[9px] font-black text-red-600 uppercase tracking-widest leading-none">Perdas Pós-T.</p>
-                                                        <span className="badge-pct bg-red-200 text-red-800 text-[12px]">{reg.percPos}%</span>
+                                                <div className="bg-red-50 p-6 flex flex-col items-center justify-center">
+                                                    <div className="flex items-center gap-3 mb-3 h-8">
+                                                        <p className="text-[10px] font-black text-red-600 uppercase tracking-widest leading-none">Perdas Pós-T.</p>
+                                                        <span className="pct-badge bg-red-200 text-red-800 text-xs self-center leading-none">{reg.percPos}%</span>
                                                     </div>
-                                                    <p className="text-4xl font-black text-red-950 mb-4 leading-none">{formatNumber(reg.totalPerdasPos)}</p>
-                                                    <div className="flex justify-around w-full">
+                                                    <p className="text-5xl font-black text-red-950 mb-5 leading-none">{formatNumber(reg.totalPerdasPos)}</p>
+                                                    <div className="flex justify-around w-full px-4">
                                                         <div className="text-center">
-                                                            <p className="text-[8px] font-black text-red-400 uppercase leading-none mb-1">Lado A</p>
-                                                            <p className="text-xl font-black text-red-800 leading-none">{formatNumber(reg.perdaPosA)}</p>
+                                                            <p className="text-[8px] font-black text-red-400 uppercase mb-1">Lado A</p>
+                                                            <p className="text-2xl font-black text-red-800 leading-none">{formatNumber(reg.perdaPosA)}</p>
                                                         </div>
                                                         <div className="text-center">
-                                                            <p className="text-[8px] font-black text-red-400 uppercase leading-none mb-1">Lado B</p>
-                                                            <p className="text-xl font-black text-red-800 leading-none">{formatNumber(reg.perdaPosB)}</p>
+                                                            <p className="text-[8px] font-black text-red-400 uppercase mb-1">Lado B</p>
+                                                            <p className="text-2xl font-black text-red-800 leading-none">{formatNumber(reg.perdaPosB)}</p>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex justify-between items-center bg-orange-50 px-6 py-4 rounded-2xl border border-orange-100 mb-4">
-                                            <div className="flex items-center gap-4 leading-none">
-                                                <p className="text-[9px] font-black text-orange-700 uppercase tracking-[0.2em] leading-none">Perda Transp.</p>
-                                                <span className="badge-pct bg-orange-200 text-orange-800 text-[12px]">{reg.percPerdaLote}%</span>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex justify-between items-center bg-orange-50 px-8 py-6 rounded-3xl border border-orange-100">
+                                                <div className="flex items-center gap-4">
+                                                    <p className="text-[10px] font-black text-orange-700 uppercase tracking-widest">Perda Transp.</p>
+                                                    <span className="pct-badge bg-orange-200 text-orange-800 text-xs">{reg.percPerdaLote}%</span>
+                                                </div>
+                                                <p className="text-3xl font-black text-orange-950 leading-none">{formatNumber(reg.totalPerdasLote)}</p>
                                             </div>
-                                            <p className="text-3xl font-black text-orange-950 leading-none">{formatNumber(reg.totalPerdasLote)} <span className="text-sm opacity-40">MUDAS</span></p>
+
+                                            <div className="flex justify-between items-center bg-slate-900 px-8 py-6 rounded-3xl border-b-4 border-slate-700 shadow-xl">
+                                                <div className="flex flex-col">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Total de Perdas</p>
+                                                    <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest">Eficiência: {100 - reg.percGeral}%</p>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <p className="text-4xl font-black text-white leading-none tracking-tighter">{formatNumber(reg.perdaAcumulada)}</p>
+                                                    <div className="pct-badge bg-red-600 text-white min-w-[60px] text-sm">
+                                                        {reg.percGeral}%
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="p-3 bg-emerald-950 rounded-xl text-center">
-                                            <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.3em]">
-                                                Próxima Contagem Agendada: <span className="text-white ml-2">{reg.proximaContagem ? reg.proximaContagem.split('-').reverse().join('/') : "--/--/--"}</span>
+                                        <div className="bg-[#062C1B] rounded-2xl py-3 px-6 text-center mt-6">
+                                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.4em]">
+                                                Próxima Contagem: <span className="text-white ml-2">{reg.proximaContagem ? reg.proximaContagem.split('-').reverse().join('/') : "--/--/--"}</span>
                                             </p>
                                         </div>
                                     </div>
                                 ))}
 
-                                <div className="mt-10 pt-8 border-t border-slate-200 flex justify-between items-center">
-                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest leading-none">
-                                        Fazenda Oásis Ltda - Relatório Gerencial de Campo
-                                    </p>
-                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest leading-none italic">
-                                        Documento gerado digitalmente.
-                                    </p>
+                                <div className="mt-12 pt-8 border-t-2 border-slate-200 flex justify-between items-center text-slate-400">
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Fazenda Oásis - Gestão Técnica de Produção</p>
+                                    <p className="text-[10px] font-bold italic">Doc. Interno - Gerado via Sistema Oásis</p>
                                 </div>
                             </div>
                         </div>
