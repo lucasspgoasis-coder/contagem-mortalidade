@@ -138,8 +138,10 @@
                     percPerdaLote: Math.round(percPerdaLote),
                     percPos: Math.round(percPos),
                     totalTrans,
-                    totalPLote, // Perda numérica lote/transplantio
-                    totalPPos,  // Perda numérica pós
+                    transA,
+                    transB,
+                    totalPLote, 
+                    totalPPos,  
                     perdaAcumulada: totalPLote + totalPPos,
                     percGeral: Math.round(percGeral),
                     pPosA: perdasCalculadas.somaA,
@@ -421,6 +423,18 @@
                                         <div className="bg-indigo-600 p-5 rounded-3xl text-center text-white flex flex-col justify-center items-center shadow-lg shadow-indigo-100">
                                             <p className="text-[8px] font-black text-indigo-100 uppercase mb-1">Perda Geral %</p>
                                             <p className="text-2xl font-black">{reg.percGeral}%</p>
+                                        </div>
+                                    </div>
+
+                                    {/* DETALHAMENTO TRANSPLANTADO POR SETOR */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-emerald-50/30 p-4 rounded-3xl border border-emerald-100/50 flex justify-between items-center px-8">
+                                            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Plantado Setor A</span>
+                                            <span className="text-lg font-black text-emerald-900">{formatNumber(reg.transA)} un</span>
+                                        </div>
+                                        <div className="bg-emerald-50/30 p-4 rounded-3xl border border-emerald-100/50 flex justify-between items-center px-8">
+                                            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Plantado Setor B</span>
+                                            <span className="text-lg font-black text-emerald-900">{formatNumber(reg.transB)} un</span>
                                         </div>
                                     </div>
 
