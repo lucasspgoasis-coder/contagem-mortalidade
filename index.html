@@ -25,7 +25,7 @@
             top: 0;
             background: #FFFFFF;
             width: 800px; 
-            padding: 20px;
+            padding: 40px;
         }
 
         input::-webkit-outer-spin-button,
@@ -108,12 +108,12 @@
             });
 
             useEffect(() => {
-                const saved = localStorage.getItem('oasis_perdas_v10');
+                const saved = localStorage.getItem('oasis_perdas_v11');
                 if (saved) setRegistros(JSON.parse(saved));
             }, []);
 
             const save = (data) => {
-                localStorage.setItem('oasis_perdas_v10', JSON.stringify(data));
+                localStorage.setItem('oasis_perdas_v11', JSON.stringify(data));
                 setRegistros(data);
             };
 
@@ -172,31 +172,41 @@
                 if (registros.length === 0) return;
                 setShowExport(true);
                 setTimeout(async () => {
-                    const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
+                    const element = reportRef.current;
+                    const canvas = await html2canvas(element, { 
+                        scale: 2, 
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#FFFFFF'
+                    });
+                    
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const { jsPDF } = window.jspdf;
                     const pdf = new jsPDF('p', 'mm', 'a4');
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                     
-                    // Lógica para múltiplas páginas se o histórico for muito longo
-                    let heightLeft = pdfHeight;
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const imgWidth = pdfWidth;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    
+                    let heightLeft = imgHeight;
                     let position = 0;
-                    const pageHeight = pdf.internal.pageSize.getHeight();
 
-                    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-                    heightLeft -= pageHeight;
+                    // Adiciona primeira página
+                    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pdfHeight;
 
+                    // Adiciona páginas extras se necessário
                     while (heightLeft >= 0) {
-                        position = heightLeft - pdfHeight;
+                        position = heightLeft - imgHeight;
                         pdf.addPage();
-                        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-                        heightLeft -= pageHeight;
+                        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pdfHeight;
                     }
 
-                    pdf.save(`OASIS_HISTORICO_${new Date().getTime()}.pdf`);
+                    pdf.save(`OASIS_RELATORIO_GERAL_${new Date().getTime()}.pdf`);
                     setShowExport(false);
-                }, 800);
+                }, 1000);
             };
 
             return (
@@ -212,9 +222,9 @@
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={exportPDF} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 transition-all shadow-lg active:scale-95">
-                                    <SvgIcon name="printer" /> Baixar Histórico PDF
+                                    <SvgIcon name="printer" /> Exportar Histórico Completo
                                 </button>
-                                <button onClick={() => { if(confirm("Limpar todo o histórico?")) save([]); }} className="bg-white/10 hover:bg-red-600 text-white p-2 rounded-lg transition-all">
+                                <button onClick={() => { if(confirm("Deseja apagar todos os registros permanentemente?")) save([]); }} className="bg-white/10 hover:bg-red-600 text-white p-2 rounded-lg transition-all">
                                     <SvgIcon name="trash" />
                                 </button>
                             </div>
@@ -227,13 +237,13 @@
                             <div className="bg-white p-6 rounded-[2rem] card-shadow border border-slate-200">
                                 <h2 className="text-[10px] font-black text-slate-900 uppercase mb-5 flex items-center gap-2">
                                     <div className="p-1.5 bg-emerald-100 rounded-lg text-emerald-700"><SvgIcon name="plus" className="w-3.5 h-3.5"/></div>
-                                    Nova Entrada
+                                    Nova Entrada de Dados
                                 </h2>
 
                                 <form onSubmit={handleAdd} className="space-y-4">
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                                            <label className="text-[8px] font-black text-slate-400 uppercase block mb-1">Data</label>
+                                            <label className="text-[8px] font-black text-slate-400 uppercase block mb-1">Data da Contagem</label>
                                             <input type="date" value={formData.dataContagem} onChange={e => setFormData({...formData, dataContagem: e.target.value})} className="w-full bg-transparent text-[11px] font-bold outline-none" required />
                                         </div>
                                         <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
@@ -245,7 +255,7 @@
                                     </div>
 
                                     <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2">
-                                        <label className="text-[8px] font-black text-slate-400 uppercase block">Local (Bloco / Talhão)</label>
+                                        <label className="text-[8px] font-black text-slate-400 uppercase block">Localização (Bloco / Talhão)</label>
                                         <select value={formData.blocoTalhao} onChange={e => setFormData({...formData, blocoTalhao: e.target.value})} className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none" required>
                                             <option value="">Selecione...</option>
                                             {BLOCOS_OPCOES.map(b => <option key={b} value={b}>{b}</option>)}
@@ -258,7 +268,9 @@
 
                                     {/* DETALHAMENTO VARIADADE */}
                                     <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-3">
-                                        <div className="text-[8px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1.5"><SvgIcon name="leaf" className="w-3 h-3" /> Adicionar Perda Pós</div>
+                                        <div className="text-[8px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
+                                            <SvgIcon name="leaf" className="w-3 h-3" /> Detalhamento de Perdas Pós-Transplantio por Variedade
+                                        </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <select value={varForm.nome} onChange={e => setVarForm({...varForm, nome: e.target.value})} className="p-2 bg-white border border-indigo-200 rounded-xl text-[10px] font-bold outline-none">
                                                 <option value="">Variedade</option>
@@ -291,7 +303,7 @@
 
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="bg-slate-900 p-3 rounded-2xl text-center">
-                                            <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Bandejas</label>
+                                            <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Total Bandejas</label>
                                             <input type="number" value={formData.totalBandejas} onChange={e => setFormData({...formData, totalBandejas: e.target.value})} className="w-full bg-transparent text-white text-center text-xl font-black outline-none" required />
                                         </div>
                                         <div className="bg-emerald-900 p-3 rounded-2xl text-center flex flex-col justify-center">
@@ -334,17 +346,17 @@
                         {/* LISTAGEM PRINCIPAL */}
                         <section className="space-y-4">
                             {registros.length === 0 ? (
-                                <div className="bg-white p-12 rounded-[2rem] border border-slate-100 text-center text-slate-300 font-bold uppercase text-[10px]">Sem registros</div>
+                                <div className="bg-white p-12 rounded-[2rem] border border-slate-100 text-center text-slate-300 font-bold uppercase text-[10px]">Nenhum registro encontrado no histórico.</div>
                             ) : (
                                 registros.map(reg => (
                                     <div key={reg.id} className="bg-white rounded-[1.5rem] p-5 card-shadow border border-slate-100 relative overflow-hidden">
                                         <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
                                         <div className="flex justify-between items-center mb-4">
                                             <div>
-                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Monitoramento</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Relatório de Campo</p>
                                                 <p className="text-base font-black text-slate-900">{reg.blocoTalhao} — {reg.dataContagem.split('-').reverse().join('/')}</p>
                                             </div>
-                                            <button onClick={() => save(registros.filter(r => r.id !== reg.id))} className="text-slate-200 hover:text-red-500"><SvgIcon name="trash" /></button>
+                                            <button onClick={() => save(registros.filter(r => r.id !== reg.id))} className="text-slate-200 hover:text-red-500 transition-colors"><SvgIcon name="trash" /></button>
                                         </div>
 
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -358,11 +370,15 @@
                                             </div>
                                             <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center">
                                                 <p className="text-[7px] font-black text-orange-600 uppercase mb-1">P. Transpl.</p>
-                                                <p className="text-lg font-black text-orange-950">{reg.percPerdaLote}%</p>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <p className="text-lg font-black text-orange-950">{reg.percPerdaLote}%</p>
+                                                </div>
                                             </div>
                                             <div className="bg-red-50 p-3 rounded-xl border border-red-100 text-center">
                                                 <p className="text-[7px] font-black text-red-600 uppercase mb-1">P. Pós</p>
-                                                <p className="text-lg font-black text-red-950">{reg.percPos}%</p>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <p className="text-lg font-black text-red-950">{reg.percPos}%</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -371,74 +387,98 @@
                         </section>
                     </main>
 
-                    {/* PDF CONTAINER (OCULTO - USADO APENAS PARA EXPORTAR) */}
+                    {/* PDF CONTAINER (ESTRUTURA DE ALTA DEFINIÇÃO PARA EXPORTAÇÃO) */}
                     {showExport && (
                         <div id="export-container" ref={reportRef}>
-                            <div className="border-b-4 border-[#062C1B] pb-6 mb-8 flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <img src={OASIS_LOGO_URL} alt="Logo" className="h-14" crossOrigin="anonymous" />
+                            <div className="border-b-8 border-[#062C1B] pb-10 mb-12 flex justify-between items-end">
+                                <div className="flex items-center gap-6">
+                                    <img src={OASIS_LOGO_URL} alt="Logo" className="h-20" crossOrigin="anonymous" />
                                     <div>
-                                        <h1 className="text-2xl font-black text-[#062C1B] uppercase leading-none">Relatório Consolidado</h1>
-                                        <p className="text-[8px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Fazenda Oásis — Gestão de Perdas</p>
+                                        <h1 className="text-4xl font-black text-[#062C1B] uppercase tracking-tighter leading-none">Relatório de Gestão de Perdas</h1>
+                                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-[0.5em] mt-2">Fazenda Oásis — Inteligência e Monitoramento</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-black text-slate-400 uppercase">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+                                    <p className="text-sm font-black text-slate-400 uppercase">Documento emitido em</p>
+                                    <p className="text-lg font-black text-slate-900">{new Date().toLocaleDateString('pt-BR')}</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-12">
                                 {registros.map((reg, idx) => (
-                                    <div key={reg.id} className="border border-slate-200 p-6 rounded-3xl bg-white break-inside-avoid">
-                                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                                    <div key={reg.id} className="border-2 border-slate-100 p-8 rounded-[3rem] bg-white break-inside-avoid relative overflow-hidden shadow-sm">
+                                        <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
+                                        
+                                        <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-6">
                                             <div>
-                                                <h3 className="text-lg font-black text-slate-900">{reg.blocoTalhao}</h3>
-                                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Data: {reg.dataContagem.split('-').reverse().join('/')} | Próxima: {reg.proximaContagem.split('-').reverse().join('/')}</p>
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Unidade de Produção</p>
+                                                <h3 className="text-3xl font-black text-slate-900">{reg.blocoTalhao}</h3>
+                                                <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
+                                                    Contagem: {reg.dataContagem.split('-').reverse().join('/')}
+                                                </p>
                                             </div>
-                                            <div className="bg-[#062C1B] text-white px-5 py-2 rounded-xl text-center">
-                                                <p className="text-[8px] font-black uppercase text-emerald-400">Perda Total</p>
-                                                <p className="text-xl font-black">{reg.percGeral}%</p>
+                                            <div className="bg-slate-900 text-white px-8 py-4 rounded-3xl text-center">
+                                                <p className="text-[10px] font-black uppercase text-emerald-400 tracking-widest mb-1">Índice Perda Geral</p>
+                                                <p className="text-4xl font-black">{reg.percGeral}%</p>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-4 gap-4 mb-6">
-                                            <div className="bg-slate-50 p-4 rounded-2xl text-center">
-                                                <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Mudas Iniciais</p>
-                                                <p className="text-lg font-black text-slate-900">{formatNumber(reg.totalMudas)}</p>
+                                        <div className="grid grid-cols-4 gap-6 mb-10">
+                                            <div className="bg-slate-50 p-6 rounded-3xl text-center">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">Mudas Iniciais</p>
+                                                <p className="text-2xl font-black text-slate-900">{formatNumber(reg.totalMudas)}</p>
                                             </div>
-                                            <div className="bg-emerald-50 p-4 rounded-2xl text-center">
-                                                <p className="text-[8px] font-black text-emerald-600 uppercase mb-2">Transplantado</p>
-                                                <p className="text-lg font-black text-emerald-950">{formatNumber(reg.totalTrans)}</p>
+                                            <div className="bg-emerald-50 p-6 rounded-3xl text-center border border-emerald-100">
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase mb-3 tracking-widest">Transplantadas</p>
+                                                <p className="text-2xl font-black text-emerald-950">{formatNumber(reg.totalTrans)}</p>
                                             </div>
-                                            <div className="bg-orange-50 p-4 rounded-2xl text-center">
-                                                <p className="text-[8px] font-black text-orange-600 uppercase mb-2">Perda Trans.</p>
-                                                <p className="text-lg font-black text-orange-950">{formatNumber(reg.totalPerdasLote)} <span className="text-[9px]">({reg.percPerdaLote}%)</span></p>
+                                            <div className="bg-orange-50 p-6 rounded-3xl text-center border border-orange-100">
+                                                <p className="text-[10px] font-black text-orange-600 uppercase mb-3 tracking-widest">P. Transplantio</p>
+                                                <p className="text-2xl font-black text-orange-950">{reg.percPerdaLote}%</p>
+                                                <p className="text-[10px] font-bold text-orange-400 mt-1">{formatNumber(reg.totalPerdasLote)} un</p>
                                             </div>
-                                            <div className="bg-red-50 p-4 rounded-2xl text-center">
-                                                <p className="text-[8px] font-black text-red-600 uppercase mb-2">Perda Pós</p>
-                                                <p className="text-lg font-black text-red-950">{formatNumber(reg.totalPPos)} <span className="text-[9px]">({reg.percPos}%)</span></p>
+                                            <div className="bg-red-50 p-6 rounded-3xl text-center border border-red-100">
+                                                <p className="text-[10px] font-black text-red-600 uppercase mb-3 tracking-widest">Perda Pós</p>
+                                                <p className="text-2xl font-black text-red-950">{reg.percPos}%</p>
+                                                <p className="text-[10px] font-bold text-red-400 mt-1">{formatNumber(reg.totalPPos)} un</p>
                                             </div>
                                         </div>
 
                                         {reg.perdasDetalhadas && reg.perdasDetalhadas.length > 0 && (
-                                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Detalhamento das Variedades</p>
-                                                <div className="flex flex-wrap gap-2">
+                                            <div className="bg-indigo-50/30 p-8 rounded-3xl border border-indigo-100/50">
+                                                <p className="text-[11px] font-black text-indigo-700 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                                                    <div className="w-6 h-0.5 bg-indigo-600"></div>
+                                                    Detalhamento de Perdas Pós-Transplantio por Variedade
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-4">
                                                     {reg.perdasDetalhadas.map((p, pIdx) => (
-                                                        <div key={pIdx} className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-bold">
-                                                            <span className="text-slate-900 uppercase">{p.nome}</span>
-                                                            <span className="ml-2 text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">Setor {p.lado}: {p.qtd} un</span>
+                                                        <div key={pIdx} className="bg-white p-4 rounded-2xl border border-indigo-100 flex justify-between items-center shadow-sm">
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Variedade / Setor</p>
+                                                                <p className="text-sm font-black text-indigo-950 uppercase">{p.nome} <span className="text-indigo-500 ml-1">(Setor {p.lado})</span></p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-xl font-black text-indigo-700">{p.qtd} <span className="text-[10px] text-indigo-400">un</span></p>
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
+
+                                        <div className="mt-8 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                                            <p>Próxima Visita Técnica agendada para: <span className="text-slate-900 ml-2">{reg.proximaContagem.split('-').reverse().join('/')}</span></p>
+                                            <p>Doc #{reg.id}</p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="mt-10 pt-6 border-t border-slate-200 text-center text-slate-300 font-bold uppercase tracking-widest text-[8px]">
-                                Fim do Relatório Histórico — Oásis Inteligência Agrícola
+                            <div className="mt-20 pt-10 border-t-4 border-slate-100 flex justify-between items-center">
+                                <div className="text-slate-400 font-bold uppercase text-[9px] tracking-widest">
+                                    Fazenda Oásis — Relatório Técnico de Campo — {new Date().getFullYear()}
+                                </div>
+                                <img src={OASIS_LOGO_URL} alt="Logo Rodapé" className="h-10 grayscale opacity-20" crossOrigin="anonymous" />
                             </div>
                         </div>
                     )}
